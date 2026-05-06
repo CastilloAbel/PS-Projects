@@ -1,1 +1,33 @@
-import express from 'express';\nimport cors from 'cors';\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\n\nconst PORT = process.env.PORT || 4000;\n\napp.get('/', (req, res) => {\n  res.send('Ahoy! Pirate Ship API is running.');\n});\n\napp.listen(PORT, () => {\n  console.log(`Server is running on port ${PORT}`);\n});
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import workspaceRoutes from './routes/workspace.routes';
+import boardRoutes from './routes/board.routes';
+import listRoutes from './routes/list.routes';
+import cardRoutes from './routes/card.routes';
+
+// Cargar variables de entorno
+dotenv.config({ path: '../.env' }); // Apunta al archivo .env en la raíz del monorepo
+
+const app = express();
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+// Rutas API
+app.use('/workspaces', workspaceRoutes);
+app.use('/boards', boardRoutes);
+app.use('/lists', listRoutes);
+app.use('/cards', cardRoutes);
+
+// Ruta base
+app.get('/', (req, res) => {
+  res.json({ message: 'Ahoy! Pirate Ship API is running 🏴‍☠️' });
+});
+
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
