@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+Frontend/node_modules/
+Backend/node_modules/
+
+# Entornos
+.env
+.env.*
+
+# Base de datos local (Volumen persistente de Docker)
+db/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+
+# Builds
+Frontend/dist/
+Backend/dist/

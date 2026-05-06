@@ -1,0 +1,1 @@
+import express from 'express';\nimport cors from 'cors';\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\n\nconst PORT = process.env.PORT || 4000;\n\napp.get('/', (req, res) => {\n  res.send('Ahoy! Pirate Ship API is running.');\n});\n\napp.listen(PORT, () => {\n  console.log(`Server is running on port ${PORT}`);\n});

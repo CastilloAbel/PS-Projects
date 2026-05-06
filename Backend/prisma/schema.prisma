@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Usuarios del sistema (La Tripulación)
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hash
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  workspaces WorkspaceMember[]
+  cards      Card[]            @relation("CardAssignee")
+}
+
+// 2. Espacios de trabajo (La Flota / Barcos)
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  members WorkspaceMember[]
+  boards  Board[]
+}
+
+// Tabla pivote para Usuarios y Workspaces (Colaboración)
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  role        Role      @default(MEMBER) // enum: ADMIN, MEMBER
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+// 3. Tableros Kanban (Mapas del tesoro)
+model Board {
+  id          String   @id @default(uuid())
+  name        String
+  background  String?  // Para la temática visual (color HEX o URL de imagen)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists       List[]
+}
+
+// 4. Columnas del tablero (Ej: Por hacer, En progreso)
+model List {
+  id        String   @id @default(uuid())
+  name      String
+  order     Int      // Para mantener el orden (Drag & Drop horizontal)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+}
+
+// 5. Tarjetas de tareas (Los botines / misiones)
+model Card {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  order       Int      // Para mantener el orden (Drag & Drop vertical)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  listId      String
+  list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  assigneeId  String?
+  assignee    User?    @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+}
