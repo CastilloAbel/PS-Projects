@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card } from './Card';
 import { Plus, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ListProps {
   list: ListType;
@@ -48,6 +49,7 @@ export const List: React.FC<ListProps> = ({
   };
 
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const bgClass = theme === 'dark' ? 'bg-surface-800' : 'bg-surface-100';
   const textClass = theme === 'dark' ? 'text-surface-50' : 'text-surface-900';
   const borderClass = theme === 'dark' ? 'border-surface-700' : 'border-surface-200';
@@ -57,7 +59,7 @@ export const List: React.FC<ListProps> = ({
       <div 
         ref={setNodeRef} 
         style={style} 
-        className={`${bgClass} opacity-50 rounded-lg w-72 flex-shrink-0 flex flex-col max-h-full border border-primary-500`}
+        className={`${bgClass} opacity-50 rounded-lg w-full md:w-72 flex-shrink-0 flex flex-col max-h-full border border-primary-500`}
       />
     );
   }
@@ -66,7 +68,7 @@ export const List: React.FC<ListProps> = ({
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`${bgClass} rounded-lg w-72 flex-shrink-0 flex flex-col max-h-full border ${borderClass} transition-colors`}
+      className={`${bgClass} rounded-lg w-full md:w-72 flex-shrink-0 flex flex-col max-h-full border ${borderClass} transition-colors`}
     >
       <div 
         {...attributes} 
@@ -104,7 +106,7 @@ export const List: React.FC<ListProps> = ({
             }`}
           >
             <Plus size={16} />
-            Agregar tarjeta
+            {t('addCard')}
           </button>
         ) : (
           <div className="flex flex-col gap-2">
@@ -117,7 +119,7 @@ export const List: React.FC<ListProps> = ({
                 if (e.key === 'Enter') onSaveCard();
                 if (e.key === 'Escape') onCancelCard();
               }}
-              placeholder="Título de la tarjeta..."
+              placeholder={t('cardTitlePlaceholder')}
               className={`w-full px-3 py-2 rounded border text-sm outline-none transition-colors ${
                 theme === 'dark'
                   ? 'bg-surface-700 border-surface-600 text-surface-50 placeholder-surface-500 focus:border-primary-500'
@@ -129,7 +131,7 @@ export const List: React.FC<ListProps> = ({
                 onClick={onSaveCard}
                 className="flex-1 btn-primary text-sm py-1"
               >
-                Guardar
+                {t('save')}
               </button>
               <button
                 onClick={onCancelCard}

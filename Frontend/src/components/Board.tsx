@@ -18,6 +18,7 @@ import { Card } from './Card';
 import { CardModal } from './CardModal';
 import { moveCard, createList, createCard, updateCard } from '../api';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Plus, X } from 'lucide-react';
 
 interface BoardProps {
@@ -35,6 +36,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
   const [cardInputs, setCardInputs] = useState<Record<string, boolean>>({});
   const [cardTitles, setCardTitles] = useState<Record<string, string>>({});
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   useEffect(() => {
     setBoard(initialBoard);
@@ -233,7 +235,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
       }
     } catch (error) {
       console.error("Error creating card:", error);
-      alert("Hubo un error al guardar la tarjeta en el servidor.");
+      alert(t('errorCard'));
     }
   };
 
@@ -264,7 +266,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
       }
     } catch (error) {
       console.error("Error creating list:", error);
-      alert("Hubo un error al guardar la lista en el servidor.");
+      alert(t('errorList'));
     }
   };
 
@@ -285,7 +287,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
       }
     } catch (error) {
       console.error("Error updating card:", error);
-      alert("Hubo un error al actualizar la tarjeta en el servidor.");
+      alert(t('errorCard'));
     }
   };
 
@@ -293,8 +295,8 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
   const textClass = theme === 'dark' ? 'text-surface-50' : 'text-surface-900';
 
   return (
-    <div className={`flex flex-col h-full ${bgClass} p-6 overflow-hidden transition-colors`}>
-      <div className={`mb-6 font-bold text-3xl ${textClass}`}>
+    <div className={`flex flex-col h-full ${bgClass} p-4 sm:p-6 overflow-hidden transition-colors`}>
+      <div className={`mb-4 sm:mb-6 font-bold text-2xl sm:text-3xl ${textClass}`}>
         {board.name}
       </div>
 
@@ -305,7 +307,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
+        <div className="flex flex-col md:flex-row gap-4 overflow-y-auto md:overflow-x-auto pb-4 flex-1 md:items-start h-full">
           <SortableContext items={board.lists.map(l => l.id)} strategy={horizontalListSortingStrategy}>
             {board.lists.map((list) => (
               <List 
@@ -325,17 +327,17 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
           {!showNewListInput ? (
             <button
               onClick={() => setShowNewListInput(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors flex-shrink-0 ${
+              className={`flex items-center gap-2 px-4 py-3 md:py-2 rounded-lg font-medium transition-colors flex-shrink-0 w-full md:w-72 justify-center md:justify-start ${
                 theme === 'dark'
                   ? 'bg-surface-800 hover:bg-surface-700 text-surface-200'
                   : 'bg-white hover:bg-surface-100 text-surface-700'
               }`}
             >
               <Plus size={18} />
-              Agregar Lista
+              {t('addList')}
             </button>
           ) : (
-            <div className={`flex flex-col gap-2 w-72 flex-shrink-0 p-3 rounded-lg ${
+            <div className={`flex flex-col gap-2 w-full md:w-72 flex-shrink-0 p-3 rounded-lg ${
               theme === 'dark' ? 'bg-surface-800' : 'bg-white'
             }`}>
               <input
@@ -347,7 +349,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
                   if (e.key === 'Enter') handleAddList();
                   if (e.key === 'Escape') setShowNewListInput(false);
                 }}
-                placeholder="Nombre de la lista..."
+                placeholder={t('listNamePlaceholder')}
                 className={`w-full px-3 py-2 rounded border outline-none transition-colors ${
                   theme === 'dark'
                     ? 'bg-surface-700 border-surface-600 text-surface-50 placeholder-surface-400 focus:border-primary-500'
@@ -359,7 +361,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
                   onClick={handleAddList}
                   className="btn-primary flex-1"
                 >
-                  Agregar
+                  {t('add')}
                 </button>
                 <button
                   onClick={() => setShowNewListInput(false)}
