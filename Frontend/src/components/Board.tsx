@@ -15,7 +15,8 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from './Card';
-import { moveCard, createList, createCard } from '../api';
+import { CardModal } from './CardModal';
+import { moveCard, createList, createCard, updateCard } from '../api';
 import { useTheme } from '../context/ThemeContext';
 import { Plus, X } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
   const [board, setBoard] = useState<BoardType>(initialBoard);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeList, setActiveList] = useState<ListType | null>(null);
+  const [editingCard, setEditingCard] = useState<CardType | null>(null);
   const [showNewListInput, setShowNewListInput] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [cardInputs, setCardInputs] = useState<Record<string, boolean>>({});
@@ -266,6 +268,27 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
     }
   };
 
+  const handleUpdateCard = async (cardId: string, updates: Partial<CardType>) => {
+    // Optimistic UI update
+    setBoard((prev) => ({
+      ...prev,
+      lists: prev.lists.map((list) => ({
+        ...list,
+        cards: list.cards.map((c) => (c.id === cardId ? { ...c, ...updates } : c)),
+      })),
+    }));
+
+    try {
+      if (board.id !== 'mock-board') {
+        await updateCard(cardId, updates);
+        onBoardUpdate();
+      }
+    } catch (error) {
+      console.error("Error updating card:", error);
+      alert("Hubo un error al actualizar la tarjeta en el servidor.");
+    }
+  };
+
   const bgClass = theme === 'dark' ? 'bg-surface-900' : 'bg-gradient-to-br from-primary-50 to-surface-50';
   const textClass = theme === 'dark' ? 'text-surface-50' : 'text-surface-900';
 
@@ -294,6 +317,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
                 onCardTitleChange={(title) => setCardTitles({ ...cardTitles, [list.id]: title })}
                 onSaveCard={() => handleSaveCard(list.id)}
                 onCancelCard={() => setCardInputs({ ...cardInputs, [list.id]: false })}
+                onCardClick={setEditingCard}
               />
             ))}
           </SortableContext>
@@ -358,12 +382,21 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
               onCardTitleChange={() => {}}
               onSaveCard={() => {}}
               onCancelCard={() => {}}
+              onCardClick={() => {}}
             />
           ) : activeCard ? (
             <Card card={activeCard} />
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {editingCard && (
+        <CardModal
+          card={editingCard}
+          onClose={() => setEditingCard(null)}
+          onSave={handleUpdateCard}
+        />
+      )}
     </div>
   );
 };

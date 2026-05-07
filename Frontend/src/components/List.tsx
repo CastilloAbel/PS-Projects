@@ -14,6 +14,7 @@ interface ListProps {
   onCardTitleChange: (title: string) => void;
   onSaveCard: () => void;
   onCancelCard: () => void;
+  onCardClick: (card: import('../types').Card) => void;
 }
 
 export const List: React.FC<ListProps> = ({
@@ -24,6 +25,7 @@ export const List: React.FC<ListProps> = ({
   onCardTitleChange,
   onSaveCard,
   onCancelCard,
+  onCardClick,
 }) => {
   const {
     attributes,
@@ -83,9 +85,9 @@ export const List: React.FC<ListProps> = ({
 
       <div className="flex-1 overflow-y-auto p-3 min-h-[200px]">
         <SortableContext items={list.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <div ref={setNodeRef} className="flex flex-col gap-3 min-h-full">
+          <div className="flex flex-col gap-3 min-h-[50px]">
             {list.cards.map((card) => (
-              <Card key={card.id} card={card} />
+              <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
             ))}
           </div>
         </SortableContext>

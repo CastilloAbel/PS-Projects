@@ -41,3 +41,8 @@ export const moveCard = async (cardId: string, listId: string, order: number): P
   const { data } = await api.patch(`/cards/${cardId}/move`, { listId, order });
   return data;
 };
+
+export const updateCard = async (cardId: string, updates: Partial<Card>): Promise<Card> => {
+  const { data } = await api.patch(`/cards/${cardId}`, updates);
+  return data;
+};

@@ -6,7 +6,7 @@ const router = Router();
 // POST /cards - Crear una nueva tarjeta en una lista
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, description, listId, order } = req.body;
+    const { title, description, listId, order, assigneeId } = req.body;
 
     if (!title || !listId || order === undefined) {
       res.status(400).json({ error: 'Título, listId y order son requeridos' });
@@ -27,7 +27,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         title,
         description,
         order,
-        listId
+        listId,
+        assigneeId
       }
     });
 
@@ -56,11 +57,31 @@ router.patch('/:id/move', async (req: Request, res: Response): Promise<void> => 
       }
     });
 
-    // TODO: En el futuro aquí emitiremos un evento por WebSockets para actualizar a todos los clientes
-
     res.json(card);
   } catch (error) {
     res.status(500).json({ error: 'Error al mover la tarjeta' });
+  }
+});
+
+// PATCH /cards/:id - Actualizar datos de una tarjeta (título, descripción, asignado)
+router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { title, description, assigneeId } = req.body;
+
+    const card = await prisma.card.update({
+      where: { id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        assigneeId: assigneeId === null ? null : assigneeId || undefined,
+      }
+    });
+
+    res.json(card);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar la tarjeta' });
   }
 });
 

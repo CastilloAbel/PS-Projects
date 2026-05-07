@@ -7,9 +7,10 @@ import { useTheme } from '../context/ThemeContext';
 
 interface CardProps {
   card: CardType;
+  onClick?: () => void;
 }
 
-export const Card: React.FC<CardProps> = ({ card }) => {
+export const Card: React.FC<CardProps> = ({ card, onClick }) => {
   const {
     attributes,
     listeners,
@@ -36,6 +37,7 @@ export const Card: React.FC<CardProps> = ({ card }) => {
     <div
       ref={setNodeRef}
       style={style}
+      onClick={onClick}
       className={`${bgClass} p-3 rounded-md shadow-sm border group flex flex-col gap-2 cursor-pointer transition-all ${hoverClass} ${
         isDragging ? 'ring-2 ring-primary-500 z-10 shadow-lg' : ''
       }`}
