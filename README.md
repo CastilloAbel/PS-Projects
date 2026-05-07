@@ -28,16 +28,35 @@ Follow these steps to spin up the complete project on your local machine.
 * [Node.js](https://nodejs.org/) (v18 or higher)
 * [Docker](https://www.docker.com/) and Docker Compose (for the database)
 
+### Environment Variables Setup
+
+Before starting the application, you need to create an environment configuration file. 
+Create a file named `.env` in the **root folder** of the project and add the following variables:
+
+```env
+# PostgreSQL Docker Configuration
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=ps_password
+POSTGRES_DB=pirate_ship_db
+
+# Local path for persistent database storage (volume)
+DB_DATA_PATH=./db
+
+# Prisma Connection URL for the Backend
+DATABASE_URL="postgresql://postgres:ps_password@localhost:5432/pirate_ship_db?schema=public"
+```
+
+*(Note: The Frontend will automatically connect to `http://localhost:4000` by default. If you need to change this, you can create a `.env` file inside the `Frontend` folder with `VITE_API_URL=your_custom_url`).*
+
 ### Step 1: Start the Database (PostgreSQL)
 
-The project includes a `docker-compose.yml` file in the root to easily deploy the database.
+The project includes a `docker-compose.yml` file in the root to easily deploy the database using the variables you just set.
 
 1. Open a terminal in the root of the project.
 2. Run the following command to start the container in the background:
    ```bash
    docker-compose up -d
    ```
-*(Make sure you have your `.env` file configured in the root with the `DATABASE_URL` variable pointing to this container).*
 
 ### Step 2: Configure and Start the Backend
 
