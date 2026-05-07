@@ -1,8 +1,8 @@
 import React from 'react';
 import type { List as ListType } from '../types';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card } from './Card';
-import { useDroppable } from '@dnd-kit/core';
 import { Plus, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -25,7 +25,14 @@ export const List: React.FC<ListProps> = ({
   onSaveCard,
   onCancelCard,
 }) => {
-  const { setNodeRef } = useDroppable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: list.id,
     data: {
       type: 'List',
@@ -33,14 +40,37 @@ export const List: React.FC<ListProps> = ({
     },
   });
 
+  const style = {
+    transition,
+    transform: CSS.Transform.toString(transform),
+  };
+
   const { theme } = useTheme();
   const bgClass = theme === 'dark' ? 'bg-surface-800' : 'bg-surface-100';
   const textClass = theme === 'dark' ? 'text-surface-50' : 'text-surface-900';
   const borderClass = theme === 'dark' ? 'border-surface-700' : 'border-surface-200';
 
+  if (isDragging) {
+    return (
+      <div 
+        ref={setNodeRef} 
+        style={style} 
+        className={`${bgClass} opacity-50 rounded-lg w-72 flex-shrink-0 flex flex-col max-h-full border border-primary-500`}
+      />
+    );
+  }
+
   return (
-    <div className={`${bgClass} rounded-lg w-72 flex-shrink-0 flex flex-col max-h-full border ${borderClass} transition-colors`}>
-      <div className={`p-4 font-semibold ${textClass} flex justify-between items-center border-b ${borderClass}`}>
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`${bgClass} rounded-lg w-72 flex-shrink-0 flex flex-col max-h-full border ${borderClass} transition-colors`}
+    >
+      <div 
+        {...attributes} 
+        {...listeners} 
+        className={`p-4 font-semibold ${textClass} flex justify-between items-center border-b ${borderClass} cursor-grab active:cursor-grabbing`}
+      >
         <h2>{list.name}</h2>
         <span className={`text-xs px-2 py-1 rounded-full ${
           theme === 'dark'

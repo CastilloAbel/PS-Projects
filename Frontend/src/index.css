@@ -3,12 +3,41 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-primary-50: #f0f9ff;
+    --color-primary-100: #e0f2fe;
+    --color-primary-200: #bae6fd;
+    --color-primary-300: #7dd3fc;
+    --color-primary-400: #38bdf8;
+    --color-primary-500: #0ea5e9;
+    --color-primary-600: #0284c7;
+    --color-primary-700: #0369a1;
+    --color-primary-800: #075985;
+    --color-primary-900: #0c4a6e;
+    --color-primary-950: #082f49;
+
+    --color-surface-50: #f8fafc;
+    --color-surface-100: #f1f5f9;
+    --color-surface-200: #e2e8f0;
+    --color-surface-300: #cbd5e1;
+    --color-surface-400: #94a3b8;
+    --color-surface-500: #64748b;
+    --color-surface-600: #475569;
+    --color-surface-700: #334155;
+    --color-surface-800: #1e293b;
+    --color-surface-900: #0f172a;
+    --color-surface-950: #020617;
+
+    --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-surface-50 text-surface-900 font-sans;
+    font-family: var(--font-family-sans);
+    @apply bg-surface-50 text-surface-900;
   }
 
   html.dark body {
@@ -30,6 +59,14 @@
   }
 
   .glass {
-    @apply backdrop-blur-md bg-white/80 dark:bg-surface-800/80;
+    @apply backdrop-blur-md bg-white/70 dark:bg-surface-800/70 border border-white/20 dark:border-surface-700/30;
+  }
+  
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
   }
 }

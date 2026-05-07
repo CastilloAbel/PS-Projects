@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Board as BoardType, Card as CardType } from '../types';
+import type { Board as BoardType, Card as CardType, List as ListType } from '../types';
 import { List } from './List';
 import {
   DndContext,
@@ -9,11 +9,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragOverEvent,
-  DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
 } from '@dnd-kit/core';
-import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { arrayMove, sortableKeyboardCoordinates, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from './Card';
 import { moveCard, createList, createCard } from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -27,6 +27,7 @@ interface BoardProps {
 export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => {
   const [board, setBoard] = useState<BoardType>(initialBoard);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
+  const [activeList, setActiveList] = useState<ListType | null>(null);
   const [showNewListInput, setShowNewListInput] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [cardInputs, setCardInputs] = useState<Record<string, boolean>>({});
@@ -54,6 +55,8 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
     if (data.current?.type === 'Card') {
       setActiveCard(data.current.card);
+    } else if (data.current?.type === 'List') {
+      setActiveList(data.current.list);
     }
   };
 
@@ -151,15 +154,38 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveCard(null);
-    const { active } = event;
+    setActiveList(null);
+    const { active, over } = event;
+
+    if (!over) return;
 
     const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const isActiveList = active.data.current?.type === 'List';
+
+    if (isActiveList && activeId !== overId) {
+      setBoard((prevBoard) => {
+        const activeListIndex = prevBoard.lists.findIndex((l) => l.id === activeId);
+        const overListIndex = prevBoard.lists.findIndex((l) => l.id === overId);
+
+        if (activeListIndex !== -1 && overListIndex !== -1) {
+          const newLists = arrayMove(prevBoard.lists, activeListIndex, overListIndex);
+          return { ...prevBoard, lists: newLists };
+        }
+        return prevBoard;
+      });
+      // In the future: Add API call to update list order here
+      return;
+    }
 
     const list = board.lists.find(l => l.cards.some(c => c.id === activeId));
-    if (list) {
+    if (list && active.data.current?.type === 'Card') {
       const cardIndex = list.cards.findIndex(c => c.id === activeId);
       try {
-        await moveCard(activeId, list.id, cardIndex);
+        if (board.id !== 'mock-board') {
+          await moveCard(activeId, list.id, cardIndex);
+        }
       } catch (error) {
         console.error("Failed to save move to backend", error);
       }
@@ -172,31 +198,71 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
   const handleSaveCard = async (listId: string) => {
     const title = cardTitles[listId];
-    if (!title.trim()) return;
+    if (!title?.trim()) return;
+
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) return;
+
+    // Optimistic local update
+    const newCard = {
+      id: `temp-card-${Date.now()}`,
+      title,
+      description: null,
+      order: list.cards.length,
+      listId
+    };
+
+    setBoard(prev => ({
+      ...prev,
+      lists: prev.lists.map(l => 
+        l.id === listId 
+          ? { ...l, cards: [...l.cards, newCard] } 
+          : l
+      )
+    }));
+
+    setCardTitles({ ...cardTitles, [listId]: '' });
+    setCardInputs({ ...cardInputs, [listId]: false });
 
     try {
-      const list = board.lists.find(l => l.id === listId);
-      if (list) {
+      if (board.id !== 'mock-board') {
         await createCard(title, listId, list.cards.length);
-        setCardTitles({ ...cardTitles, [listId]: '' });
-        setCardInputs({ ...cardInputs, [listId]: false });
         onBoardUpdate();
       }
     } catch (error) {
       console.error("Error creating card:", error);
+      alert("Hubo un error al guardar la tarjeta en el servidor.");
     }
   };
 
   const handleAddList = async () => {
     if (!newListName.trim()) return;
 
+    // Optimistic local update
+    const newList = {
+      id: `temp-list-${Date.now()}`,
+      name: newListName,
+      order: board.lists.length,
+      boardId: board.id,
+      cards: []
+    };
+
+    setBoard(prev => ({
+      ...prev,
+      lists: [...prev.lists, newList]
+    }));
+
+    setNewListName('');
+    setShowNewListInput(false);
+
     try {
-      await createList(newListName, board.id, board.lists.length);
-      setNewListName('');
-      setShowNewListInput(false);
-      onBoardUpdate();
+      if (board.id !== 'mock-board') {
+        await createList(newListName, board.id, board.lists.length);
+        onBoardUpdate();
+      }
     } catch (error) {
       console.error("Error creating list:", error);
+      alert("Hubo un error al guardar la lista en el servidor.");
     }
   };
 
@@ -217,18 +283,20 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
-          {board.lists.map((list) => (
-            <List 
-              key={list.id} 
-              list={list} 
-              onAddCard={handleAddCard}
-              isAddingCard={cardInputs[list.id]}
-              cardTitle={cardTitles[list.id] || ''}
-              onCardTitleChange={(title) => setCardTitles({ ...cardTitles, [list.id]: title })}
-              onSaveCard={() => handleSaveCard(list.id)}
-              onCancelCard={() => setCardInputs({ ...cardInputs, [list.id]: false })}
-            />
-          ))}
+          <SortableContext items={board.lists.map(l => l.id)} strategy={horizontalListSortingStrategy}>
+            {board.lists.map((list) => (
+              <List 
+                key={list.id} 
+                list={list} 
+                onAddCard={handleAddCard}
+                isAddingCard={cardInputs[list.id]}
+                cardTitle={cardTitles[list.id] || ''}
+                onCardTitleChange={(title) => setCardTitles({ ...cardTitles, [list.id]: title })}
+                onSaveCard={() => handleSaveCard(list.id)}
+                onCancelCard={() => setCardInputs({ ...cardInputs, [list.id]: false })}
+              />
+            ))}
+          </SortableContext>
 
           {!showNewListInput ? (
             <button
@@ -281,7 +349,19 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
         </div>
 
         <DragOverlay>
-          {activeCard ? <Card card={activeCard} /> : null}
+          {activeList ? (
+            <List 
+              list={activeList} 
+              onAddCard={() => {}}
+              isAddingCard={false}
+              cardTitle=""
+              onCardTitleChange={() => {}}
+              onSaveCard={() => {}}
+              onCancelCard={() => {}}
+            />
+          ) : activeCard ? (
+            <Card card={activeCard} />
+          ) : null}
         </DragOverlay>
       </DndContext>
     </div>
