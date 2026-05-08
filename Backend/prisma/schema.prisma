@@ -14,12 +14,16 @@ model User {
   password  String   // Hash
   name      String
   avatarUrl String?
+  bio       String?  // Biografía corta
+  department String? // Departamento (opcional)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  workspaces WorkspaceMember[]
-  cards      Card[]            @relation("CardAssignee")
+  workspaces    WorkspaceMember[]
+  cards         Card[]            @relation("CardAssignee")
+  comments      Comment[]
+  activities    Activity[]
 }
 
 // 2. Espacios de trabajo (La Flota / Barcos)
@@ -33,6 +37,7 @@ model Workspace {
   // Relaciones
   members WorkspaceMember[]
   boards  Board[]
+  tags    Tag[]
 }
 
 // Tabla pivote para Usuarios y Workspaces (Colaboración)
@@ -52,6 +57,13 @@ model WorkspaceMember {
 enum Role {
   ADMIN
   MEMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 // 3. Tableros Kanban (Mapas del tesoro)
@@ -84,17 +96,84 @@ model List {
 
 // 5. Tarjetas de tareas (Los botines / misiones)
 model Card {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
-  description String?  @db.Text
-  order       Int      // Para mantener el orden (Drag & Drop vertical)
+  description String?   @db.Text
+  order       Int       // Para mantener el orden (Drag & Drop vertical)
+  priority    Priority  @default(MEDIUM)
+  startDate   DateTime? // Fecha de inicio
+  dueDate     DateTime? // Fecha de vencimiento
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relaciones
+  listId      String
+  list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  assigneeId  String?
+  assignee    User?     @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  
+  tags        CardTag[]
+  comments    Comment[]
+  activities  Activity[]
+}
+
+// 6. Etiquetas personalizadas (Tags/Categorías)
+model Tag {
+  id          String   @id @default(uuid())
+  name        String
+  color       String   // Color HEX: #FF5733
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relaciones
-  listId      String
-  list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
-  assigneeId  String?
-  assignee    User?    @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  cards       CardTag[]
+
+  @@unique([name, workspaceId]) // No puede haber dos tags con mismo nombre en un workspace
+}
+
+// Tabla pivote para la relación M:M entre Card y Tag
+model CardTag {
+  id     String @id @default(uuid())
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, tagId]) // No puede haber duplicados
+}
+
+// 7. Comentarios en tarjetas
+model Comment {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 8. Historial de actividad en tarjetas
+model Activity {
+  id          String   @id @default(uuid())
+  action      String   // "created", "updated", "completed", "moved", etc.
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relaciones
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

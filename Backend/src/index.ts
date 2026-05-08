@@ -6,6 +6,9 @@ import boardRoutes from './routes/board.routes';
 import listRoutes from './routes/list.routes';
 import cardRoutes from './routes/card.routes';
 import userRoutes from './routes/user.routes';
+import tagRoutes from './routes/tag.routes';
+import commentRoutes from './routes/comment.routes';
+import activityRoutes from './routes/activity.routes';
 
 // Cargar variables de entorno
 dotenv.config({ path: '../.env' }); // Apunta al archivo .env en la raíz del monorepo
@@ -22,6 +25,9 @@ app.use('/boards', boardRoutes);
 app.use('/lists', listRoutes);
 app.use('/cards', cardRoutes);
 app.use('/users', userRoutes);
+app.use('/tags', tagRoutes);
+app.use('/comments', commentRoutes);
+app.use('/activities', activityRoutes);
 
 // Ruta base
 app.get('/', (req, res) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Board as BoardType, Card as CardType, List as ListType } from '../types';
+import type { Board as BoardType, Card as CardType, List as ListType, Tag } from '../types';
 import { List } from './List';
 import {
   DndContext,
@@ -16,7 +16,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from './Card';
 import { CardModal } from './CardModal';
-import { moveCard, createList, createCard, updateCard } from '../api';
+import { moveCard, createList, createCard, updateCard, getTags } from '../api';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Plus, X } from 'lucide-react';
@@ -35,12 +35,26 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
   const [newListName, setNewListName] = useState('');
   const [cardInputs, setCardInputs] = useState<Record<string, boolean>>({});
   const [cardTitles, setCardTitles] = useState<Record<string, string>>({});
+  const [workspaceTags, setWorkspaceTags] = useState<Tag[]>([]);
   const { theme } = useTheme();
   const { t } = useLanguage();
 
   useEffect(() => {
     setBoard(initialBoard);
+    // Cargar tags del workspace
+    loadWorkspaceTags();
   }, [initialBoard]);
+
+  const loadWorkspaceTags = async () => {
+    try {
+      if (initialBoard.workspaceId && initialBoard.workspaceId !== 'mock-workspace') {
+        const tags = await getTags(initialBoard.workspaceId);
+        setWorkspaceTags(tags);
+      }
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -395,6 +409,7 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
       {editingCard && (
         <CardModal
           card={editingCard}
+          workspaceTags={workspaceTags}
           onClose={() => setEditingCard(null)}
           onSave={handleUpdateCard}
         />
