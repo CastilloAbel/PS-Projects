@@ -19,6 +19,8 @@ import { CardModal } from './CardModal';
 import { moveCard, createList, createCard, updateCard, getTags } from '../api';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useError } from '../context/ErrorContext';
+import { useUser } from '../context/UserContext';
 import { Plus, X } from 'lucide-react';
 
 interface BoardProps {
@@ -38,6 +40,8 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
   const [workspaceTags, setWorkspaceTags] = useState<Tag[]>([]);
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { showError } = useError();
+  const { currentUserId } = useUser();
 
   useEffect(() => {
     setBoard(initialBoard);
@@ -244,12 +248,23 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
     try {
       if (board.id !== 'mock-board') {
-        await createCard(title, listId, list.cards.length);
+        await createCard(title, listId, list.cards.length, undefined, currentUserId);
         onBoardUpdate();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating card:", error);
-      alert(t('errorCard'));
+      const errorMessage = error?.response?.data?.error || 'No se pudo crear la tarjeta. Por favor intenta de nuevo.';
+      showError(errorMessage);
+      
+      // Revert optimistic update
+      setBoard(prev => ({
+        ...prev,
+        lists: prev.lists.map(l => 
+          l.id === listId 
+            ? { ...l, cards: l.cards.filter(c => c.id !== newCard.id) } 
+            : l
+        )
+      }));
     }
   };
 
@@ -275,12 +290,19 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
     try {
       if (board.id !== 'mock-board') {
-        await createList(newListName, board.id, board.lists.length);
+        await createList(newListName, board.id, board.lists.length, currentUserId);
         onBoardUpdate();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating list:", error);
-      alert(t('errorList'));
+      const errorMessage = error?.response?.data?.error || 'No se pudo crear la lista. Por favor intenta de nuevo.';
+      showError(errorMessage);
+      
+      // Revert optimistic update
+      setBoard(prev => ({
+        ...prev,
+        lists: prev.lists.filter(l => l.id !== newList.id)
+      }));
     }
   };
 
@@ -296,12 +318,13 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
     try {
       if (board.id !== 'mock-board') {
-        await updateCard(cardId, updates);
+        await updateCard(cardId, { ...updates, userId: currentUserId });
         onBoardUpdate();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating card:", error);
-      alert(t('errorCard'));
+      const errorMessage = error?.response?.data?.error || 'No se pudo actualizar la tarjeta. Por favor intenta de nuevo.';
+      showError(errorMessage);
     }
   };
 

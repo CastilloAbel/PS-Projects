@@ -83,7 +83,7 @@ router.get('/', async (req: Request, res: Response) => {
 // PATCH /comments/:id - Editar comentario
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { content, userId } = req.body;
 
     if (!content || content.trim().length === 0) {

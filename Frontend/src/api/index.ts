@@ -40,14 +40,14 @@ export const updateBoard = async (boardId: string, updates: Partial<Board>): Pro
 };
 
 // =============== LISTS ===============
-export const createList = async (name: string, boardId: string, order: number): Promise<List> => {
-  const { data } = await api.post('/lists', { name, boardId, order });
+export const createList = async (name: string, boardId: string, order: number, userId?: string): Promise<List> => {
+  const { data } = await api.post('/lists', { name, boardId, order, userId });
   return data;
 };
 
 // =============== CARDS ===============
-export const createCard = async (title: string, listId: string, order: number, priority?: string): Promise<Card> => {
-  const { data } = await api.post('/cards', { title, listId, order, priority });
+export const createCard = async (title: string, listId: string, order: number, priority?: string, userId?: string): Promise<Card> => {
+  const { data } = await api.post('/cards', { title, listId, order, priority, userId });
   return data;
 };
 

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
+import { ErrorProvider, useError } from './context/ErrorContext'
+import { UserProvider } from './context/UserContext'
 import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X } from 'lucide-react'
 import { Board } from './components/Board'
+import { ErrorModal } from './components/ErrorModal'
 import { fetchBoards } from './api'
 import type { Board as BoardType } from './types'
 
@@ -70,6 +73,7 @@ function KanbanDemo() {
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
+  const { error, clearError } = useError();
   const [currentView, setCurrentView] = useState<'home' | 'board'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -192,6 +196,8 @@ function AppContent() {
           <KanbanDemo />
         )}
       </main>
+      
+      <ErrorModal error={error} onClose={clearError} />
     </div>
   )
 }
@@ -200,7 +206,11 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AppContent />
+        <UserProvider>
+          <ErrorProvider>
+            <AppContent />
+          </ErrorProvider>
+        </UserProvider>
       </LanguageProvider>
     </ThemeProvider>
   )

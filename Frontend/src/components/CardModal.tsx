@@ -43,7 +43,7 @@ export const CardModal: React.FC<CardModalProps> = ({ card, workspaceTags = [], 
     onSave(card.id, {
       title,
       description: description || null,
-      assigneeId: assigneeId || undefined,
+      assigneeId,
       priority,
       startDate: startDate || null,
       dueDate: dueDate || null,

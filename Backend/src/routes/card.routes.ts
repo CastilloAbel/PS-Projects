@@ -6,7 +6,7 @@ const router = Router();
 // POST /cards - Crear una nueva tarjeta en una lista
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, description, listId, order, assigneeId, priority, startDate, dueDate } = req.body;
+    const { title, description, listId, order, assigneeId, priority, startDate, dueDate, userId } = req.body;
 
     if (!title || !listId || order === undefined) {
       res.status(400).json({ error: 'Título, listId y order son requeridos' });
@@ -43,18 +43,26 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Registrar actividad
-    await prisma.activity.create({
-      data: {
-        action: 'created',
-        description: `Creó la tarjeta "${title}"`,
-        cardId: card.id,
-        userId: assigneeId || 'system' // Aquí sería mejor pasar userId desde frontend
+    // Registrar actividad solo si tenemos un userId válido
+    if (userId) {
+      try {
+        await prisma.activity.create({
+          data: {
+            action: 'created',
+            description: `Creó la tarjeta "${title}"`,
+            cardId: card.id,
+            userId
+          }
+        });
+      } catch (activityError) {
+        // Si falla registrar actividad, no afecta la creación de tarjeta
+        console.warn('Warning: No se pudo registrar la actividad', activityError);
       }
-    });
+    }
 
     res.status(201).json(card);
   } catch (error) {
+    console.error('Error creating card:', error);
     res.status(500).json({ error: 'Error al crear la tarjeta' });
   }
 });
@@ -150,20 +158,43 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id as string;
     const { title, description, assigneeId, priority, startDate, dueDate, isCompleted, userId } = req.body;
 
+    // Build update data object
+    const updateData: any = {};
+    
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (priority !== undefined) updateData.priority = priority;
+    if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (isCompleted !== undefined) updateData.isCompleted = isCompleted;
+    
+    // Handle assigneeId: if it's an empty string, set to null; otherwise use the value
+    if (assigneeId !== undefined) {
+      updateData.assigneeId = assigneeId === '' ? null : assigneeId;
+    }
+
     const card = await prisma.card.update({
       where: { id },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
-        ...(priority !== undefined && { priority }),
-        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-        ...(isCompleted !== undefined && { isCompleted }),
-        assigneeId: assigneeId === null ? null : assigneeId || undefined,
-      },
+      data: updateData,
       include: {
-        assignee: { select: { id: true, name: true, avatarUrl: true } },
-        tags: { include: { tag: true } }
+        assignee: { select: { id: true, name: true, avatarUrl: true, email: true } },
+        tags: { include: { tag: true } },
+        comments: {
+          include: {
+            user: {
+              select: { id: true, name: true, avatarUrl: true }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        activities: {
+          include: {
+            user: {
+              select: { id: true, name: true, avatarUrl: true }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
       }
     });
 

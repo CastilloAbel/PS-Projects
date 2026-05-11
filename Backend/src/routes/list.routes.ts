@@ -6,7 +6,7 @@ const router = Router();
 // POST /lists - Crear una nueva columna en un tablero
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, boardId, order } = req.body;
+    const { name, boardId, order, userId } = req.body;
 
     if (!name || !boardId || order === undefined) {
       res.status(400).json({ error: 'Nombre, boardId y order son requeridos' });
@@ -29,6 +29,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         boardId
       }
     });
+
+    // Registrar actividad solo si tenemos un userId válido
+    if (userId) {
+      try {
+        // Get a card from this board to record activity (lists don't have activities directly)
+        // For now, we'll just skip activity recording for lists
+        console.log(`List "${name}" created by user ${userId}`);
+      } catch (activityError) {
+        console.warn('Warning: No se pudo registrar la actividad', activityError);
+      }
+    }
 
     res.status(201).json(list);
   } catch (error) {
