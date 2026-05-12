@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
+import { LogIn, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -14,8 +14,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const { login } = useAuth();
   const { showError } = useError();
   
-  const [email, setEmail] = useState('admin@ps-project.local');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,7 +79,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@ps-project.local"
+              placeholder="tu@email.com"
               className={`w-full px-4 py-3 rounded-lg border outline-none transition-colors ${inputClass}`}
               disabled={isLoading}
               required
@@ -90,15 +91,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
               Contraseña
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`w-full px-4 py-3 rounded-lg border outline-none transition-colors ${inputClass}`}
-              disabled={isLoading}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`w-full px-4 py-3 rounded-lg border outline-none transition-colors pr-12 ${inputClass}`}
+                disabled={isLoading}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-surface-700 text-surface-400 hover:text-surface-200'
+                    : 'hover:bg-surface-100 text-surface-500 hover:text-surface-700'
+                } disabled:cursor-not-allowed`}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -130,19 +146,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Demo Info */}
-        <div className={`mt-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
-          <p className={`text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'} mb-2`}>
-            Credenciales de Demostración:
-          </p>
-          <p className={`text-xs ${labelClass} font-mono`}>
-            Email: <span className={theme === 'dark' ? 'text-blue-300' : 'text-blue-600'}>admin@ps-project.local</span>
-          </p>
-          <p className={`text-xs ${labelClass} font-mono`}>
-            Password: <span className={theme === 'dark' ? 'text-blue-300' : 'text-blue-600'}>ps-project-admin</span>
-          </p>
-        </div>
       </div>
     </div>
   );

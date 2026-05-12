@@ -4,10 +4,10 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { ErrorProvider, useError } from './context/ErrorContext'
 import { UserProvider } from './context/UserContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X, LogOut, Key } from 'lucide-react'
+import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X, LogOut, Shield } from 'lucide-react'
 import { Board } from './components/Board'
 import { LoginPage } from './components/LoginPage'
-import { ChangePasswordModal } from './components/ChangePasswordModal'
+import { SecurityPage } from './components/SecurityPage'
 import { ErrorModal } from './components/ErrorModal'
 import { fetchBoards } from './api'
 import type { Board as BoardType } from './types'
@@ -83,10 +83,9 @@ function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
   const { error, clearError } = useError();
-  const { isAuthenticated, logout, isLoading: authLoading, user } = useAuth();
-  const [currentView, setCurrentView] = useState<'home' | 'board'>('home');
+  const { isAuthenticated, logout, isLoading: authLoading } = useAuth();
+  const [currentView, setCurrentView] = useState<'home' | 'board' | 'security'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   if (authLoading) {
     return (
@@ -127,13 +126,13 @@ function AppContent() {
             </button>
             <div className="flex items-center gap-2 border-l pl-4 border-surface-200 dark:border-surface-700">
               <button
-                onClick={() => setShowChangePasswordModal(true)}
+                onClick={() => setCurrentView('security')}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
-                aria-label="Change Password"
-                title={`Cambiar contraseña para ${user?.name}`}
+                aria-label="Security Settings"
+                title="Configuración de seguridad"
               >
-                <Key size={16} />
-                <span className="hidden sm:inline">Contraseña</span>
+                <Shield size={16} />
+                <span className="hidden sm:inline">Seguridad</span>
               </button>
               <button
                 onClick={toggleLanguage}
@@ -194,13 +193,13 @@ function AppContent() {
             <div className="flex items-center justify-center gap-4 pt-3 border-t border-surface-200 dark:border-surface-700">
               <button
                 onClick={() => {
-                  setShowChangePasswordModal(true);
+                  setCurrentView('security');
                   setIsMenuOpen(false);
                 }}
                 className="flex flex-1 justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
               >
-                <Key size={18} />
-                <span>Contraseña</span>
+                <Shield size={18} />
+                <span>Seguridad</span>
               </button>
               <button
                 onClick={() => {
@@ -256,17 +255,12 @@ function AppContent() {
               <p className="text-xs sm:text-sm text-surface-400 dark:text-surface-500 mt-6 sm:mt-8 px-4">{t('backendWarning')}</p>
             </div>
           </div>
-        ) : (
+        ) : currentView === 'board' ? (
           <KanbanDemo />
+        ) : (
+          <SecurityPage onClose={() => setCurrentView('home')} />
         )}
       </main>
-      
-      {showChangePasswordModal && (
-        <ChangePasswordModal
-          onClose={() => setShowChangePasswordModal(false)}
-          onSuccess={() => setShowChangePasswordModal(false)}
-        />
-      )}
       
       <ErrorModal error={error} onClose={clearError} />
     </div>
