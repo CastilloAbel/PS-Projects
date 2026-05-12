@@ -9,6 +9,7 @@ import userRoutes from './routes/user.routes';
 import tagRoutes from './routes/tag.routes';
 import commentRoutes from './routes/comment.routes';
 import activityRoutes from './routes/activity.routes';
+import authRoutes from './routes/auth.routes';
 
 // Cargar variables de entorno
 dotenv.config({ path: '../.env' }); // Apunta al archivo .env en la raíz del monorepo
@@ -18,6 +19,9 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Rutas públicas
+app.use('/auth', authRoutes);
 
 // Rutas API
 app.use('/workspaces', workspaceRoutes);

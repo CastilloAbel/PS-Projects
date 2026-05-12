@@ -3,8 +3,11 @@ import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { ErrorProvider, useError } from './context/ErrorContext'
 import { UserProvider } from './context/UserContext'
-import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X } from 'lucide-react'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X, LogOut, Key } from 'lucide-react'
 import { Board } from './components/Board'
+import { LoginPage } from './components/LoginPage'
+import { ChangePasswordModal } from './components/ChangePasswordModal'
 import { ErrorModal } from './components/ErrorModal'
 import { fetchBoards } from './api'
 import type { Board as BoardType } from './types'
@@ -13,8 +16,14 @@ function KanbanDemo() {
   const [board, setBoard] = useState<BoardType | null>(null);
   const [loading, setLoading] = useState(true);
   const { t, language } = useLanguage();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     fetchBoards()
       .then(boards => {
         if (boards && boards.length > 0) {
@@ -56,7 +65,7 @@ function KanbanDemo() {
         });
       })
       .finally(() => setLoading(false));
-  }, [language, t]); // Reacting to language changes
+  }, [language, t, isAuthenticated]); // Reacting to language changes and auth status
 
   if (loading) {
     return (
@@ -74,8 +83,27 @@ function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
   const { error, clearError } = useError();
+  const { isAuthenticated, logout, isLoading: authLoading, user } = useAuth();
   const [currentView, setCurrentView] = useState<'home' | 'board'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+
+  if (authLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-surface-50 dark:bg-surface-950">
+        <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginPage onLoginSuccess={() => setCurrentView('board')} />
+        <ErrorModal error={error} onClose={clearError} />
+      </>
+    );
+  }
 
   return (
     <div className="h-screen w-full flex flex-col bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
@@ -99,6 +127,15 @@ function AppContent() {
             </button>
             <div className="flex items-center gap-2 border-l pl-4 border-surface-200 dark:border-surface-700">
               <button
+                onClick={() => setShowChangePasswordModal(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+                aria-label="Change Password"
+                title={`Cambiar contraseña para ${user?.name}`}
+              >
+                <Key size={16} />
+                <span className="hidden sm:inline">Contraseña</span>
+              </button>
+              <button
                 onClick={toggleLanguage}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
                 aria-label="Toggle Language"
@@ -116,6 +153,14 @@ function AppContent() {
                 ) : (
                   <Sun size={20} className="text-surface-300" />
                 )}
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+                aria-label="Logout"
+              >
+                <LogOut size={16} />
+                <span>Salir</span>
               </button>
             </div>
           </div>
@@ -149,6 +194,16 @@ function AppContent() {
             <div className="flex items-center justify-center gap-4 pt-3 border-t border-surface-200 dark:border-surface-700">
               <button
                 onClick={() => {
+                  setShowChangePasswordModal(true);
+                  setIsMenuOpen(false);
+                }}
+                className="flex flex-1 justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+              >
+                <Key size={18} />
+                <span>Contraseña</span>
+              </button>
+              <button
+                onClick={() => {
                   toggleLanguage();
                   setIsMenuOpen(false);
                 }}
@@ -169,6 +224,15 @@ function AppContent() {
                 ) : (
                   <><Sun size={18} /> Modo Claro</>
                 )}
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  setIsMenuOpen(false);
+                }}
+                className="flex flex-1 justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+              >
+                <LogOut size={18} /> Salir
               </button>
             </div>
           </div>
@@ -197,6 +261,13 @@ function AppContent() {
         )}
       </main>
       
+      {showChangePasswordModal && (
+        <ChangePasswordModal
+          onClose={() => setShowChangePasswordModal(false)}
+          onSuccess={() => setShowChangePasswordModal(false)}
+        />
+      )}
+      
       <ErrorModal error={error} onClose={clearError} />
     </div>
   )
@@ -206,11 +277,13 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <UserProvider>
-          <ErrorProvider>
-            <AppContent />
-          </ErrorProvider>
-        </UserProvider>
+        <AuthProvider>
+          <UserProvider>
+            <ErrorProvider>
+              <AppContent />
+            </ErrorProvider>
+          </UserProvider>
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   )

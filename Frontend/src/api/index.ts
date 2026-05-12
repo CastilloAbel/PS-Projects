@@ -7,6 +7,15 @@ export const api = axios.create({
   baseURL: API_URL,
 });
 
+// Add JWT token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // =============== WORKSPACES ===============
 export const fetchWorkspaces = async (): Promise<Workspace[]> => {
   const { data } = await api.get('/workspaces');
@@ -149,5 +158,16 @@ export const getActivities = async (cardId: string, limit = 50): Promise<Activit
 
 export const getActivity = async (activityId: string): Promise<Activity> => {
   const { data } = await api.get(`/activities/${activityId}`);
+  return data;
+};
+
+// =============== AUTH ===============
+export const loginUser = async (email: string, password: string): Promise<{ token: string; user: User }> => {
+  const { data } = await api.post('/auth/login', { email, password });
+  return data;
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+  const { data } = await api.post('/auth/change-password', { currentPassword, newPassword });
   return data;
 };
