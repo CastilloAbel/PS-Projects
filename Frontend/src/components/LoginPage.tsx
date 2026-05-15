@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { LogIn, AlertCircle, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -143,6 +143,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               </>
             )}
           </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-4">
+            <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-surface-700' : 'bg-surface-200'}`}></div>
+            <span className={`text-sm ${labelClass}`}>O</span>
+            <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-surface-700' : 'bg-surface-200'}`}></div>
+          </div>
+
+          {/* Google Login Button */}
+          <a
+            href="http://localhost:4000/auth/google"
+            className={`w-full py-3 flex items-center justify-center gap-2 text-base font-semibold rounded-lg border transition-colors ${
+              theme === 'dark'
+                ? 'bg-surface-800 border-surface-700 text-surface-50 hover:bg-surface-700'
+                : 'bg-white border-surface-200 text-surface-900 hover:bg-surface-50'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <Mail size={18} />
+            Iniciar con Google
+          </a>
         </form>
       </div>
     </div>

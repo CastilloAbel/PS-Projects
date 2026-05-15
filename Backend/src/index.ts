@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import dotenv from 'dotenv';
+import passport from './passport';
 import { verifyJWT, errorHandler, requestLogger } from './middleware';
 import workspaceRoutes from './routes/workspace.routes';
 import boardRoutes from './routes/board.routes';
@@ -13,6 +15,7 @@ import tagRoutes from './routes/tag.routes';
 import commentRoutes from './routes/comment.routes';
 import activityRoutes from './routes/activity.routes';
 import authRoutes from './routes/auth.routes';
+import oauthRoutes from './routes/oauth.routes';
 
 // Cargar variables de entorno
 dotenv.config({ path: '../.env' }); // Apunta al archivo .env en la raíz del monorepo
@@ -35,10 +38,28 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+// Session middleware para Passport (necesario para OAuth)
+app.use(session({
+  secret: process.env.JWT_SECRET || 'ps-project-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
+}));
+
+// Inicializar Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use(requestLogger);
 
 // Rutas públicas (sin protección JWT)
 app.use('/auth', authRoutes);
+app.use('/auth', oauthRoutes);
 
 // Middleware de protección JWT para todas las rutas posteriores
 app.use(verifyJWT);

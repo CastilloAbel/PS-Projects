@@ -8,6 +8,7 @@ import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X, LogOut, Shield } f
 import { Board } from './components/Board'
 import { LoginPage } from './components/LoginPage'
 import { SecurityPage } from './components/SecurityPage'
+import { AuthCallbackPage } from './components/AuthCallbackPage'
 import { ErrorModal } from './components/ErrorModal'
 import { fetchBoards, logoutUser } from './api'
 import type { Board as BoardType } from './types'
@@ -84,8 +85,15 @@ function AppContent() {
   const { language, toggleLanguage, t } = useLanguage();
   const { error, clearError } = useError();
   const { isAuthenticated, logout, isLoading: authLoading } = useAuth();
-  const [currentView, setCurrentView] = useState<'home' | 'board' | 'security'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'board' | 'security' | 'callback'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Detectar si estamos en la página de callback
+  useEffect(() => {
+    if (window.location.pathname === '/auth/callback') {
+      setCurrentView('callback');
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -102,6 +110,16 @@ function AppContent() {
       <div className="h-screen w-full flex items-center justify-center bg-surface-50 dark:bg-surface-950">
         <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
       </div>
+    );
+  }
+
+  // Mostrar página de callback durante OAuth
+  if (currentView === 'callback') {
+    return (
+      <>
+        <AuthCallbackPage onSuccess={() => setCurrentView('board')} />
+        <ErrorModal error={error} onClose={clearError} />
+      </>
     );
   }
 
