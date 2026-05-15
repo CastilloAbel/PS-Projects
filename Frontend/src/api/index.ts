@@ -5,16 +5,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Include cookies in requests
 });
 
-// Add JWT token to requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Note: JWT token is now stored in httpOnly cookies managed by the backend
+// The browser automatically includes cookies in requests with withCredentials: true
+// No need to manually add Authorization header
 
 // =============== WORKSPACES ===============
 export const fetchWorkspaces = async (): Promise<Workspace[]> => {
@@ -162,12 +158,18 @@ export const getActivity = async (activityId: string): Promise<Activity> => {
 };
 
 // =============== AUTH ===============
-export const loginUser = async (email: string, password: string): Promise<{ token: string; user: User }> => {
+export const loginUser = async (email: string, password: string): Promise<{ user: User }> => {
   const { data } = await api.post('/auth/login', { email, password });
+  // Token is now in httpOnly cookie, automatically managed by browser
   return data;
 };
 
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
   const { data } = await api.post('/auth/change-password', { currentPassword, newPassword });
+  return data;
+};
+
+export const logoutUser = async (): Promise<{ message: string }> => {
+  const { data } = await api.post('/auth/logout');
   return data;
 };

@@ -9,7 +9,7 @@ import { Board } from './components/Board'
 import { LoginPage } from './components/LoginPage'
 import { SecurityPage } from './components/SecurityPage'
 import { ErrorModal } from './components/ErrorModal'
-import { fetchBoards } from './api'
+import { fetchBoards, logoutUser } from './api'
 import type { Board as BoardType } from './types'
 
 function KanbanDemo() {
@@ -87,6 +87,16 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<'home' | 'board' | 'security'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    } finally {
+      logout();
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-surface-50 dark:bg-surface-950">
@@ -154,7 +164,7 @@ function AppContent() {
                 )}
               </button>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
                 aria-label="Logout"
               >
@@ -226,7 +236,7 @@ function AppContent() {
               </button>
               <button
                 onClick={() => {
-                  logout();
+                  handleLogout();
                   setIsMenuOpen(false);
                 }}
                 className="flex flex-1 justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"

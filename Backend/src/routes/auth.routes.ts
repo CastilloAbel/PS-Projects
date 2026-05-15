@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../prisma';
+import { validateRequest } from '../validation';
+import { loginSchema, changePasswordSchema } from '../schemas';
 
 const router = Router();
 
@@ -12,8 +15,19 @@ interface JwtPayload {
   email: string;
 }
 
+// Rate limiter for login attempts
+// Máximo 5 intentos cada 15 minutos por IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos
+  message: 'Demasiados intentos de login. Intenta de nuevo en 15 minutos.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'development' // Skip en desarrollo
+});
+
 // POST /auth/login - Login with email and password
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', loginLimiter, validateRequest(loginSchema), async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
@@ -47,8 +61,17 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       { expiresIn: '7d' }
     );
 
+    // Set httpOnly cookie with token (secure in production)
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: isProduction, // Only send over HTTPS in production
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+    });
+
+    // Return user info (without token in body for security)
     res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -63,35 +86,21 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 });
 
 // POST /auth/change-password - Change password (requires JWT)
-router.post('/change-password', async (req: Request, res: Response): Promise<void> => {
+router.post('/change-password', validateRequest(changePasswordSchema), async (req: Request, res: Response): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'No autorizado' });
-      return;
-    }
+    // JWT is verified by global middleware, userId is in req.userId
+    const userId = (req as any).userId;
 
-    const token = authHeader.substring(7);
-    
-    let decoded: JwtPayload;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    } catch (error) {
-      res.status(401).json({ error: 'Token inválido o expirado' });
+    if (!userId) {
+      res.status(401).json({ error: 'No autorizado' });
       return;
     }
 
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
-      return;
-    }
-
     // Find user
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+      where: { id: userId }
     });
 
     if (!user) {
@@ -112,7 +121,7 @@ router.post('/change-password', async (req: Request, res: Response): Promise<voi
 
     // Update password
     await prisma.user.update({
-      where: { id: decoded.userId },
+      where: { id: userId },
       data: { password: hashedPassword }
     });
 
@@ -123,24 +132,14 @@ router.post('/change-password', async (req: Request, res: Response): Promise<voi
   }
 });
 
-// Middleware to verify JWT
-export const verifyJWT = (req: Request, res: Response, next: any) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'No autorizado' });
-    return;
-  }
-
-  const token = authHeader.substring(7);
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    (req as any).userId = decoded.userId;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Token inválido o expirado' });
-  }
-};
+// POST /auth/logout - Clear auth cookie
+router.post('/logout', (req: Request, res: Response): void => {
+  res.clearCookie('authToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.json({ message: 'Logout exitoso' });
+});
 
 export default router;

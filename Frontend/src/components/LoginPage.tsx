@@ -26,10 +26,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-
-      login(token, user);
+      const { user } = await api.post('/auth/login', { email, password }).then(r => r.data);
+      login(user);
       onLoginSuccess();
     } catch (err: any) {
       const errorMessage = err?.response?.data?.error || 'Error al iniciar sesión';

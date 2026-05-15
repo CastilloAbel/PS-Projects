@@ -4,8 +4,7 @@ import type { User } from '../types';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -15,40 +14,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize from localStorage on mount
+  // Check if user has valid session on mount
+  // Token is stored in httpOnly cookie, managed by browser automatically
   useEffect(() => {
-    const storedToken = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('authUser');
+    const checkAuth = async () => {
+      try {
+        // Try to verify token by making a request to a protected endpoint
+        // If cookies contain valid token, request succeeds
+        // For now, we'll just mark as loaded
+        // In production, could make a GET /auth/me endpoint
+        const storedUser = sessionStorage.getItem('authUser');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
+    checkAuth();
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
+  const login = (newUser: User) => {
     setUser(newUser);
     setIsAuthenticated(true);
-    localStorage.setItem('authToken', newToken);
-    localStorage.setItem('authUser', JSON.stringify(newUser));
+    // Store user info in sessionStorage (cleared when browser closes)
+    // Token is in httpOnly cookie managed by browser
+    sessionStorage.setItem('authUser', JSON.stringify(newUser));
   };
 
   const logout = () => {
-    setToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
+    sessionStorage.removeItem('authUser');
+    // Token cookie will be cleared by backend on logout endpoint
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

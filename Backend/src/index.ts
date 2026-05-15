@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import { verifyJWT, errorHandler, requestLogger } from './middleware';
 import workspaceRoutes from './routes/workspace.routes';
 import boardRoutes from './routes/board.routes';
 import listRoutes from './routes/list.routes';
@@ -16,14 +19,31 @@ dotenv.config({ path: '../.env' }); // Apunta al archivo .env en la raíz del mo
 
 const app = express();
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// Security middleware - Helmet adds various HTTP headers
+app.use(helmet());
 
-// Rutas públicas
+// Configurar CORS para permitir credenciales (cookies)
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true, // Permite enviar cookies
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Middlewares globales
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(cookieParser());
+app.use(requestLogger);
+
+// Rutas públicas (sin protección JWT)
 app.use('/auth', authRoutes);
 
-// Rutas API
+// Middleware de protección JWT para todas las rutas posteriores
+app.use(verifyJWT);
+
+// Rutas API protegidas
 app.use('/workspaces', workspaceRoutes);
 app.use('/boards', boardRoutes);
 app.use('/lists', listRoutes);
@@ -33,10 +53,13 @@ app.use('/tags', tagRoutes);
 app.use('/comments', commentRoutes);
 app.use('/activities', activityRoutes);
 
-// Ruta base
-app.get('/', (req, res) => {
+// Ruta base (pública)
+app.get('/', (req: any, res) => {
   res.json({ message: 'Ahoy! Pirate Ship API is running 🏴‍☠️' });
 });
+
+// Middleware de manejo de errores (debe ser el último)
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 
