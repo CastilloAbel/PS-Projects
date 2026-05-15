@@ -1,105 +1,288 @@
 # PS (Pirate Ship) 🏴‍☠️ - Project Manager
 
-PS (Pirate Ship) is a modern, intuitive, and **Self-Hosted** Project Manager. Inspired by tools like Trello, Jira, and Linear, PS aims to offer an excellent, agile, and collaborative user experience (UX), ideal for teams that want to keep full control of their data.
+> **Self-hosted project management tool** inspired by Trello, Jira, and Linear. Built with React, Node.js, PostgreSQL, and modern web technologies.
 
-## 🚀 Current Project Status (MVP)
+![Status](https://img.shields.io/badge/status-MVP-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen) ![React](https://img.shields.io/badge/react-19.2-blue) ![TypeScript](https://img.shields.io/badge/typescript-5.x-blue)
 
-Currently, the project is in its Minimum Viable Product (MVP) phase and has the following operational features:
+## 🌟 Features
 
-* **Interactive Kanban Board:**
-  * **Full Drag & Drop:** Drag and drop cards (tasks) between columns, and reorder columns (lists) horizontally.
-  * **Task Management:** Create new tasks, edit their titles, add detailed descriptions, and assign team members (users) from a dedicated modal.
-  * **Column Management:** Create new columns dynamically to adapt the workflow.
-* **User Interface (UI/UX):**
-  * Modern *Glassmorphism* design using Tailwind CSS.
-  * Native support for **Dark Mode / Light Mode**.
-  * **Optimistic UI:** The interface reacts instantly to your actions without waiting for the server response, providing an ultra-smooth experience.
-* **Database & Backend:**
-  * Connected to a real PostgreSQL database using Prisma ORM.
-  * RESTful API built with Node.js and Express.
+### ✅ Core Functionality
+- **Interactive Kanban Board** - Drag & drop cards and columns
+- **Task Management** - Create, edit, delete tasks with descriptions
+- **User Assignment** - Assign team members to tasks
+- **Team Collaboration** - Comments, activity history, real-time updates
+- **Workspaces** - Organize projects into workspaces
+- **Tags & Labels** - Custom categories with colors
+- **Dark Mode** - Built-in theme support
+- **Multi-language** - Spanish/English support
+
+### 🔐 Security
+- **JWT Authentication** - Secure token-based auth
+- **Google OAuth 2.0** - Social login integration
+- **Rate Limiting** - Brute force protection
+- **Input Validation** - Zod schema validation
+- **CORS Protection** - Cross-origin restrictions
+- **Security Headers** - Helmet.js integration
+- **Password Hashing** - bcrypt with salt rounds
+
+### 📊 Technical Highlights
+- **TypeScript** - Type-safe codebase
+- **PostgreSQL** - Reliable relational database
+- **Prisma ORM** - Type-safe database access
+- **Tailwind CSS** - Utility-first styling
+- **Vite** - Fast build tool
+- **Winston Logger** - Structured logging
+- **Passport** - Authentication strategies
 
 ---
 
-## 🛠️ Local Installation and Deployment Guide
-
-Follow these steps to spin up the complete project on your local machine.
+## 🚀 Quick Start
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (v18 or higher)
-* [Docker](https://www.docker.com/) and Docker Compose (for the database)
+- [Node.js](https://nodejs.org/) v18+
+- [Docker](https://www.docker.com/) & Docker Compose
+- [Git](https://git-scm.com/)
 
-### Environment Variables Setup
+### Installation
 
-Before starting the application, you need to create an environment configuration file. 
-Create a file named `.env` in the **root folder** of the project and add the following variables:
-
-```env
-# PostgreSQL Docker Configuration
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=ps_password
-POSTGRES_DB=pirate_ship_db
-
-# Local path for persistent database storage (volume)
-DB_DATA_PATH=./db
-
-# Prisma Connection URL for the Backend
-DATABASE_URL="postgresql://postgres:ps_password@localhost:5432/pirate_ship_db?schema=public"
+**1. Clone the repository**
+```bash
+git clone https://github.com/yourusername/PS-Projects.git
+cd PS-Projects
 ```
 
-*(Note: The Frontend will automatically connect to `http://localhost:4000` by default. If you need to change this, you can create a `.env` file inside the `Frontend` folder with `VITE_API_URL=your_custom_url`).*
+**2. Setup environment variables**
+```bash
+cp .env.example .env
+```
 
-### Step 1: Start the Database (PostgreSQL)
+Edit `.env` and add:
+```env
+# Database
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=pirate_password
+POSTGRES_DB=pirate_ship_db
 
-The project includes a `docker-compose.yml` file in the root to easily deploy the database using the variables you just set.
+# JWT & Backend
+JWT_SECRET=your_secret_key_here
+PORT=4000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 
-1. Open a terminal in the root of the project.
-2. Run the following command to start the container in the background:
-   ```bash
-   docker-compose up -d
-   ```
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:4000/auth/google/callback
+```
 
-### Step 2: Configure and Start the Backend
+**3. Start the database**
+```bash
+docker-compose up -d
+```
 
-1. Open a new terminal and navigate to the Backend folder:
-   ```bash
-   cd Backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Synchronize the database schema with Prisma:
-   ```bash
-   npx prisma db push
-   ```
-   *(Optional: If it's your first time, you can populate the database with test users by running `npx ts-node prisma/seed.ts`)*
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   *The backend will be running on `http://localhost:4000`.*
+**4. Setup Backend**
+```bash
+cd Backend
+npm install
+npx prisma db push
+npx prisma db seed  # Optional: populate test data
+npm run dev
+```
 
-### Step 3: Configure and Start the Frontend
+**5. Setup Frontend** (new terminal)
+```bash
+cd Frontend
+npm install
+npm run dev
+```
 
-1. Open a new terminal and navigate to the Frontend folder:
-   ```bash
-   cd Frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the React/Vite application:
-   ```bash
-   npm run dev
-   ```
-   *The frontend will typically be available on `http://localhost:5173`.*
+**6. Open in browser**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:4000
 
 ---
 
-## 👥 Test Users (Seed)
-If you ran the seed script in the database, you will have access to the following mock users to test task assignment:
-* **Abel** (`abel@example.com`)
-* **Dummy** (`dummy@example.com`)
+## 🔑 Test Credentials
 
-Happy sailing! ⚓
+**Email:** `admin@ps-project.local`  
+**Password:** `ps-project-admin`
+
+Or use **Google OAuth** to sign in.
+
+---
+
+## 📁 Project Structure
+
+```
+PS-Projects/
+├── Backend/              # Node.js/Express API
+│   ├── src/
+│   │   ├── routes/      # API endpoints
+│   │   ├── middleware.ts
+│   │   ├── logger.ts
+│   │   └── passport.ts  # OAuth strategy
+│   └── prisma/
+│
+├── Frontend/             # React/Vite SPA
+│   ├── src/
+│   │   ├── components/  # React components
+│   │   ├── context/     # State management
+│   │   └── api/         # HTTP client
+│
+├── docs/                 # Documentation
+├── docker-compose.yml
+└── .env.example
+```
+
+See [REPOSITORY_STRUCTURE.md](./REPOSITORY_STRUCTURE.md) for detailed structure.
+
+---
+
+## 📚 Documentation
+
+- [SETUP.md](./docs/SETUP.md) - Detailed setup guide
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Architecture & design patterns
+- [API.md](./docs/API.md) - API endpoint documentation
+- [DEVELOPMENT.md](./docs/DEVELOPMENT.md) - Development guide
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Production deployment
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- React 19.2 + Vite
+- TypeScript
+- Tailwind CSS
+- Lucide Icons
+- Axios
+- Context API (state management)
+
+### Backend
+- Node.js + Express 5
+- TypeScript
+- PostgreSQL 15
+- Prisma ORM 6
+- Passport (OAuth)
+- Winston (logging)
+- Zod (validation)
+- Helmet (security)
+
+### DevOps
+- Docker & Docker Compose
+- Git/GitHub
+
+---
+
+## 🔄 Development Workflow
+
+### Running Development Servers
+
+**Terminal 1 - Database:**
+```bash
+docker-compose up
+```
+
+**Terminal 2 - Backend:**
+```bash
+cd Backend && npm run dev
+```
+
+**Terminal 3 - Frontend:**
+```bash
+cd Frontend && npm run dev
+```
+
+### Building for Production
+
+**Backend:**
+```bash
+cd Backend && npm run build
+```
+
+**Frontend:**
+```bash
+cd Frontend && npm run build
+```
+
+---
+
+## 📝 API Endpoints
+
+### Authentication
+- `POST /auth/login` - Login with credentials
+- `POST /auth/logout` - Logout
+- `POST /auth/change-password` - Change password
+- `GET /auth/google` - Google OAuth login
+- `GET /auth/google/callback` - OAuth callback
+
+### Boards
+- `GET /boards` - List all boards
+- `POST /boards` - Create board
+- `PATCH /boards/:id` - Update board
+
+### Cards
+- `GET /cards/:id` - Get card details
+- `POST /cards` - Create card
+- `PATCH /cards/:id` - Update card
+- `DELETE /cards/:id` - Delete card
+
+See [API.md](./docs/API.md) for complete endpoint list.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📋 Roadmap
+
+### Phase 2 (In Progress)
+- [ ] LDAP/AD Integration
+- [ ] 2FA (Two-Factor Authentication)
+- [ ] Socket.IO real-time collaboration
+- [ ] File attachments
+
+### Phase 3 (Planned)
+- [ ] Notifications (email, desktop)
+- [ ] Analytics dashboard
+- [ ] Custom workflows
+- [ ] Import/Export (Trello, Jira)
+- [ ] Mobile app (React Native)
+
+---
+
+## 🔒 Security
+
+This project implements modern security best practices:
+- JWT tokens in httpOnly cookies
+- Password hashing with bcrypt
+- Rate limiting
+- Input validation with Zod
+- CORS protection
+- Security headers (Helmet)
+- HTTPS ready
+
+For security concerns, please email security@ps-projects.local (or create a private security advisory).
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see [LICENSE](./LICENSE) file for details.
+
+---
+
+## 🙋 Support
+
+- 📖 Check the [documentation](./docs/)
+- 🐛 Report issues on [GitHub Issues](https://github.com/yourusername/PS-Projects/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/PS-Projects/discussions)
+
+---
+
+**Made with ⚓ by the PS Team**
+
+Happy sailing! 🏴‍☠️

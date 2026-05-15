@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { prisma } from '../prisma';
 import { validateRequest } from '../validation';
 import { loginSchema, changePasswordSchema } from '../schemas';
+import logger from '../logger';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.post('/login', loginLimiter, validateRequest(loginSchema), async (req: Re
     });
 
     if (!user) {
+      logger.warn(`Login attempt with non-existent email: ${email}`);
       res.status(401).json({ error: 'Credenciales inválidas' });
       return;
     }
@@ -50,6 +52,7 @@ router.post('/login', loginLimiter, validateRequest(loginSchema), async (req: Re
     const passwordValid = await bcrypt.compare(password, user.password || '');
 
     if (!passwordValid) {
+      logger.warn(`Failed login attempt for user: ${email}`);
       res.status(401).json({ error: 'Credenciales inválidas' });
       return;
     }
@@ -60,6 +63,8 @@ router.post('/login', loginLimiter, validateRequest(loginSchema), async (req: Re
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    logger.info(`User logged in successfully: ${user.email} (${user.id})`);
 
     // Set httpOnly cookie with token (secure in production)
     const isProduction = process.env.NODE_ENV === 'production';
@@ -80,7 +85,7 @@ router.post('/login', loginLimiter, validateRequest(loginSchema), async (req: Re
       }
     });
   } catch (error) {
-    console.error('Error during login:', error);
+    logger.error(`Error during login:`, error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 });

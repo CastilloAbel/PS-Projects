@@ -1,24 +1,107 @@
-# Dependencias
+# ============================================
+# DEPENDENCIES
+# ============================================
 node_modules/
-Frontend/node_modules/
-Backend/node_modules/
+package-lock.json
+yarn.lock
 
-# Entornos
-.env
-.env.*
+# ============================================
+# BUILD & DIST
+# ============================================
+dist/
+build/
+*.tsbuildinfo
+out/
 
-# Base de datos local (Volumen persistente de Docker)
-db/
-
-# Logs
+# ============================================
+# LOGS
+# ============================================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 
-# OS
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production.local
+!.env.example
+
+# ============================================
+# IDE & EDITOR
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history
+.ionide
 
-# Builds
-Frontend/dist/
-Backend/dist/
+# ============================================
+# OS
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================
+# DATABASE
+# ============================================
+db/
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# ============================================
+# PRISMA
+# ============================================
+prisma/migrations/
+!prisma/seed.ts
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+tmp/
+temp/
+*.bak
+*.backup
+
+# ============================================
+# TESTING
+# ============================================
+coverage/
+.nyc_output/
+jest-results.json
+*.lcov
+
+# ============================================
+# DOCKER
+# ============================================
+.dockerignore
+docker-compose.override.yml
+
+# ============================================
+# MISC
+# ============================================
+.turbo/
+dist-ssr/
+*.egg-info/
+.cache/
+.env.vault
