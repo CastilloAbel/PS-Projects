@@ -21,9 +21,12 @@ model User {
 
   // Relaciones
   workspaces    WorkspaceMember[]
+  boardsOwned   Board[]           @relation("BoardOwner")
   cards         Card[]            @relation("CardAssignee")
   comments      Comment[]
   activities    Activity[]
+  boardMembers  BoardMember[]
+  auditLogs     AuditLog[]
 }
 
 // 2. Espacios de trabajo (La Flota / Barcos)
@@ -42,8 +45,9 @@ model Workspace {
 
 // Tabla pivote para Usuarios y Workspaces (Colaboración)
 model WorkspaceMember {
-  id          String    @id @default(uuid())
-  role        Role      @default(MEMBER) // enum: ADMIN, MEMBER
+  id          String   @id @default(uuid())
+  role        WorkspaceRole @default(MEMBER) // OWNER, ADMIN, MEMBER
+  joinedAt    DateTime @default(now())
   
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -54,9 +58,18 @@ model WorkspaceMember {
   @@unique([userId, workspaceId])
 }
 
-enum Role {
+enum WorkspaceRole {
+  OWNER
   ADMIN
   MEMBER
+}
+
+enum BoardRole {
+  OWNER
+  ADMIN
+  EDITOR
+  COMMENTER
+  VIEWER
 }
 
 enum Priority {
@@ -77,7 +90,27 @@ model Board {
   // Relaciones
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  ownerId     String   // El usuario que creó el board
+  owner       User     @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  
   lists       List[]
+  members     BoardMember[]
+}
+
+// Tabla pivote para Usuarios y Boards (Control de acceso por Board)
+model BoardMember {
+  id        String   @id @default(uuid())
+  role      BoardRole @default(VIEWER) // OWNER, ADMIN, EDITOR, COMMENTER, VIEWER
+  joinedAt  DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
 }
 
 // 4. Columnas del tablero (Ej: Por hacer, En progreso)
@@ -176,4 +209,21 @@ model Activity {
   
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 9. Auditoría de cambios (Tracking de todas las operaciones)
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String   // "CREATE", "UPDATE", "DELETE"
+  entity      String   // "CARD", "BOARD", "USER", etc.
+  entityId    String
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  changes     Json     // { field, oldValue, newValue }
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
 }
