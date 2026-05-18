@@ -1,4 +1,6 @@
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER';
+export type BoardRole = 'OWNER' | 'ADMIN' | 'EDITOR' | 'COMMENTER' | 'VIEWER';
 
 export interface User {
   id: string;
@@ -106,4 +108,24 @@ export interface Workspace {
   name: string;
   description: string | null;
   boards: Board[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: WorkspaceRole;
+  joinedAt: string;
+  user?: User;
+}
+
+export interface BoardMember {
+  id: string;
+  userId: string;
+  boardId: string;
+  role: BoardRole;
+  joinedAt: string;
+  user?: User;
 }

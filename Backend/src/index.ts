@@ -14,6 +14,7 @@ import userRoutes from './routes/user.routes';
 import tagRoutes from './routes/tag.routes';
 import commentRoutes from './routes/comment.routes';
 import activityRoutes from './routes/activity.routes';
+import memberRoutes from './routes/member.routes';
 import authRoutes from './routes/auth.routes';
 import oauthRoutes from './routes/oauth.routes';
 
@@ -73,6 +74,7 @@ app.use('/users', userRoutes);
 app.use('/tags', tagRoutes);
 app.use('/comments', commentRoutes);
 app.use('/activities', activityRoutes);
+app.use('/', memberRoutes);
 
 // Ruta base (pública)
 app.get('/', (req: any, res) => {

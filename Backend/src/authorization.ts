@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { WorkspaceRole, BoardRole } from '@prisma/client';
+import { Request } from 'express';
 
 /**
  * TIPOS DE PERMISOS
@@ -315,24 +316,23 @@ export async function getWorkspaceRole(
  * Registra un cambio en el audit log
  */
 export async function logAudit(
-  action: 'CREATE' | 'UPDATE' | 'DELETE',
+  userId: string,
+  action: string,
   entity: string,
   entityId: string,
-  userId: string,
   changes: Record<string, any> = {},
-  ipAddress?: string,
-  userAgent?: string
+  req?: Request
 ): Promise<void> {
   try {
     await prisma.auditLog.create({
       data: {
+        userId,
         action,
         entity,
         entityId,
-        userId,
         changes,
-        ipAddress,
-        userAgent
+        ipAddress: req?.ip || undefined,
+        userAgent: req?.get('user-agent') || undefined
       }
     });
   } catch (error) {

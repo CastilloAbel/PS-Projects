@@ -4,6 +4,7 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { ErrorProvider, useError } from './context/ErrorContext'
 import { UserProvider } from './context/UserContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { PermissionProvider } from './context/PermissionContext'
 import { Sun, Moon, LayoutDashboard, Loader2, Globe, Menu, X, LogOut, Shield } from 'lucide-react'
 import { Board } from './components/Board'
 import { LoginPage } from './components/LoginPage'
@@ -301,9 +302,11 @@ function App() {
       <LanguageProvider>
         <AuthProvider>
           <UserProvider>
-            <ErrorProvider>
-              <AppContent />
-            </ErrorProvider>
+            <PermissionProvider>
+              <ErrorProvider>
+                <AppContent />
+              </ErrorProvider>
+            </PermissionProvider>
           </UserProvider>
         </AuthProvider>
       </LanguageProvider>
