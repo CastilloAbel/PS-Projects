@@ -15,6 +15,8 @@ import {
   getBoardMembers,
   updateBoardMemberRole,
   removeBoardMember,
+  getBoard,
+  createBoard,
 } from '../api';
 import type { Workspace, Board as BoardType, BoardMember, WorkspaceMember } from '../types';
 
@@ -55,9 +57,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   }, [workspace, setWorkspaceContext]);
 
   // Handle board selection
-  const handleSelectBoard = (board: BoardType) => {
-    setSelectedBoard(board);
-    setBoardContext(board.id, (board.boardMembers?.[0]?.role as any) || null);
+  const handleSelectBoard = async (board: BoardType) => {
+    setLoading(true);
+    try {
+      // Load complete board data from API
+      const completeBoard = await getBoard(board.id);
+      setSelectedBoard({
+        ...completeBoard,
+        lists: completeBoard.lists || [],
+      });
+      setBoardContext(completeBoard.id, (completeBoard.boardMembers?.[0]?.role as any) || null);
+    } catch (error) {
+      console.error('Error loading board:', error);
+      // Fallback to the provided board data
+      setSelectedBoard(board);
+      setBoardContext(board.id, (board.boardMembers?.[0]?.role as any) || null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle adding workspace member
@@ -177,6 +194,27 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     }
   };
 
+  // Handle create board
+  const handleCreateBoard = async () => {
+    const boardName = prompt('Enter board name:', 'New Board');
+    if (!boardName) return;
+
+    setLoading(true);
+    try {
+      const newBoard = await createBoard(boardName, workspace.id);
+      
+      // Update workspace with new board
+      setWorkspace({
+        ...workspace,
+        boards: [...(workspace.boards || []), newBoard],
+      });
+    } catch (error) {
+      console.error('Error creating board:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950">
       {/* Sidebar */}
@@ -185,6 +223,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
         currentWorkspace={workspace}
         onWorkspaceSelect={onWorkspaceSelect}
         onCreateWorkspace={onCreateWorkspace}
+        onCreateBoard={handleCreateBoard}
         onLogout={onLogout}
         userName={userName}
       />

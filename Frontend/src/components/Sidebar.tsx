@@ -16,6 +16,7 @@ interface SidebarProps {
   currentWorkspace: Workspace | null;
   onWorkspaceSelect: (workspace: Workspace) => void;
   onCreateWorkspace: () => void;
+  onCreateBoard: () => void;
   onLogout: () => void;
   userName: string;
 }
@@ -25,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentWorkspace,
   onWorkspaceSelect,
   onCreateWorkspace,
+  onCreateBoard,
   onLogout,
   userName,
 }) => {
@@ -132,6 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span className="text-sm font-medium">Boards</span>
                   </div>
                   <button
+                    onClick={onCreateBoard}
                     className="p-1 hover:bg-surface-700 rounded transition-colors"
                     title="Create new board"
                   >

@@ -18,6 +18,11 @@ export const fetchWorkspaces = async (): Promise<Workspace[]> => {
   return data;
 };
 
+export const getWorkspace = async (workspaceId: string): Promise<Workspace> => {
+  const { data } = await api.get(`/workspaces/${workspaceId}`);
+  return data;
+};
+
 export const createWorkspace = async (name: string, description?: string): Promise<Workspace> => {
   const { data } = await api.post('/workspaces', { name, description });
   return data;
