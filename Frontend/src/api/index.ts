@@ -173,3 +173,65 @@ export const logoutUser = async (): Promise<{ message: string }> => {
   const { data } = await api.post('/auth/logout');
   return data;
 };
+
+// =============== WORKSPACE MEMBERS ===============
+export const addWorkspaceMember = async (
+  workspaceId: string,
+  email: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.post(`/workspaces/${workspaceId}/members`, { email, role });
+  return data;
+};
+
+export const getWorkspaceMembers = async (workspaceId: string): Promise<any[]> => {
+  const { data } = await api.get(`/workspaces/${workspaceId}/members`);
+  return data;
+};
+
+export const updateWorkspaceMemberRole = async (
+  workspaceId: string,
+  memberId: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.patch(`/workspaces/${workspaceId}/members/${memberId}`, { role });
+  return data;
+};
+
+export const removeWorkspaceMember = async (
+  workspaceId: string,
+  memberId: string
+): Promise<void> => {
+  await api.delete(`/workspaces/${workspaceId}/members/${memberId}`);
+};
+
+// =============== BOARD MEMBERS ===============
+export const addBoardMember = async (
+  boardId: string,
+  email: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.post(`/boards/${boardId}/members`, { email, role });
+  return data;
+};
+
+export const getBoardMembers = async (boardId: string): Promise<any[]> => {
+  const { data } = await api.get(`/boards/${boardId}/members`);
+  return data;
+};
+
+export const updateBoardMemberRole = async (
+  boardId: string,
+  memberId: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.patch(`/boards/${boardId}/members/${memberId}`, { role });
+  return data;
+};
+
+export const removeBoardMember = async (
+  boardId: string,
+  memberId: string
+): Promise<void> => {
+  await api.delete(`/boards/${boardId}/members/${memberId}`);
+};

@@ -100,14 +100,20 @@ export interface Board {
   name: string;
   background: string | null;
   workspaceId: string;
+  ownerId?: string;
   lists: List[];
+  boardMembers?: BoardMember[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Workspace {
   id: string;
   name: string;
   description: string | null;
-  boards: Board[];
+  ownerId?: string;
+  boards?: Board[];
+  workspaceMembers?: WorkspaceMember[];
   createdAt?: string;
   updatedAt?: string;
 }
