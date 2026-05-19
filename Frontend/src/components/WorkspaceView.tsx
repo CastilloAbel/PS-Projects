@@ -6,6 +6,16 @@ import { Board } from './Board';
 import { RoleManagement } from './RoleManagement';
 import { useTheme } from '../context/ThemeContext';
 import { usePermission } from '../context/PermissionContext';
+import {
+  addWorkspaceMember,
+  getWorkspaceMembers,
+  updateWorkspaceMemberRole,
+  removeWorkspaceMember,
+  addBoardMember,
+  getBoardMembers,
+  updateBoardMemberRole,
+  removeBoardMember,
+} from '../api';
 import type { Workspace, Board as BoardType, BoardMember, WorkspaceMember } from '../types';
 
 interface WorkspaceViewProps {
@@ -18,7 +28,7 @@ interface WorkspaceViewProps {
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
-  workspace,
+  workspace: initialWorkspace,
   workspaces,
   onWorkspaceSelect,
   onCreateWorkspace,
@@ -27,9 +37,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { setBoardContext, setWorkspaceContext } = usePermission();
+  const [workspace, setWorkspace] = useState<Workspace>(initialWorkspace);
   const [selectedBoard, setSelectedBoard] = useState<BoardType | null>(null);
   const [showRoleManagement, setShowRoleManagement] = useState<'board' | 'workspace' | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Update workspace when prop changes
+  useEffect(() => {
+    setWorkspace(initialWorkspace);
+  }, [initialWorkspace]);
 
   // Set workspace context when workspace changes
   useEffect(() => {
@@ -48,9 +64,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   const handleAddWorkspaceMember = async (email: string, role: string) => {
     setLoading(true);
     try {
-      // TODO: Call API to add member
-      // await addWorkspaceMember(workspace.id, email, role);
-      console.log('Add workspace member:', email, role);
+      await addWorkspaceMember(workspace.id, email, role);
+      // Refresh members
+      const members = await getWorkspaceMembers(workspace.id);
+      setWorkspace({
+        ...workspace,
+        workspaceMembers: members as WorkspaceMember[],
+      });
     } catch (error) {
       console.error('Error adding workspace member:', error);
       throw error;
@@ -63,9 +83,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   const handleUpdateWorkspaceMemberRole = async (memberId: string, role: string) => {
     setLoading(true);
     try {
-      // TODO: Call API to update member role
-      // await updateWorkspaceMemberRole(workspace.id, memberId, role);
-      console.log('Update workspace member role:', memberId, role);
+      await updateWorkspaceMemberRole(workspace.id, memberId, role);
+      // Refresh members
+      const members = await getWorkspaceMembers(workspace.id);
+      setWorkspace({
+        ...workspace,
+        workspaceMembers: members as WorkspaceMember[],
+      });
     } catch (error) {
       console.error('Error updating workspace member role:', error);
       throw error;
@@ -78,9 +102,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   const handleRemoveWorkspaceMember = async (memberId: string) => {
     setLoading(true);
     try {
-      // TODO: Call API to remove member
-      // await removeWorkspaceMember(workspace.id, memberId);
-      console.log('Remove workspace member:', memberId);
+      await removeWorkspaceMember(workspace.id, memberId);
+      // Refresh members
+      const members = await getWorkspaceMembers(workspace.id);
+      setWorkspace({
+        ...workspace,
+        workspaceMembers: members as WorkspaceMember[],
+      });
     } catch (error) {
       console.error('Error removing workspace member:', error);
       throw error;
@@ -94,9 +122,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     if (!selectedBoard) return;
     setLoading(true);
     try {
-      // TODO: Call API to add board member
-      // await addBoardMember(selectedBoard.id, email, role);
-      console.log('Add board member:', email, role);
+      await addBoardMember(selectedBoard.id, email, role);
+      // Refresh board members
+      const members = await getBoardMembers(selectedBoard.id);
+      setSelectedBoard({
+        ...selectedBoard,
+        boardMembers: members as BoardMember[],
+      });
     } catch (error) {
       console.error('Error adding board member:', error);
       throw error;
@@ -110,9 +142,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     if (!selectedBoard) return;
     setLoading(true);
     try {
-      // TODO: Call API to update board member role
-      // await updateBoardMemberRole(selectedBoard.id, memberId, role);
-      console.log('Update board member role:', memberId, role);
+      await updateBoardMemberRole(selectedBoard.id, memberId, role);
+      // Refresh board members
+      const members = await getBoardMembers(selectedBoard.id);
+      setSelectedBoard({
+        ...selectedBoard,
+        boardMembers: members as BoardMember[],
+      });
     } catch (error) {
       console.error('Error updating board member role:', error);
       throw error;
@@ -126,9 +162,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     if (!selectedBoard) return;
     setLoading(true);
     try {
-      // TODO: Call API to remove board member
-      // await removeBoardMember(selectedBoard.id, memberId);
-      console.log('Remove board member:', memberId);
+      await removeBoardMember(selectedBoard.id, memberId);
+      // Refresh board members
+      const members = await getBoardMembers(selectedBoard.id);
+      setSelectedBoard({
+        ...selectedBoard,
+        boardMembers: members as BoardMember[],
+      });
     } catch (error) {
       console.error('Error removing board member:', error);
       throw error;

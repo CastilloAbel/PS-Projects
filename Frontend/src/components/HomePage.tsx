@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Loader2, FolderOpen, Users, Calendar, ArrowRight } from 'lucide-react';
+import { Plus, Loader2, FolderOpen, Users, Calendar, ArrowRight, Moon, Sun, Globe, Shield, LogOut, Menu, X } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import type { Workspace } from '../types';
 
 interface HomePageProps {
   workspaces: Workspace[];
   onSelectWorkspace: (workspace: Workspace) => void;
   onCreateWorkspace: () => void;
+  onLogout: () => void;
   loading: boolean;
 }
 
@@ -13,9 +17,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   workspaces,
   onSelectWorkspace,
   onCreateWorkspace,
+  onLogout,
   loading,
 }) => {
+  const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage } = useLanguage();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const filteredWorkspaces = workspaces.filter((ws) =>
     ws.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -23,13 +32,161 @@ export const HomePage: React.FC<HomePageProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-950 pb-20">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
+      {/* Header/Navigation */}
+      <header className="glass border-b border-surface-200 dark:border-surface-700 shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center font-bold text-white">
+                PS
+              </div>
+              <div>
+                <h1 className="font-bold text-lg text-surface-900 dark:text-surface-50">Pirate Ship</h1>
+                <p className="text-xs text-surface-500 dark:text-surface-400">Project Manager</p>
+              </div>
+            </div>
+
+            {/* Desktop Controls */}
+            <div className="hidden md:flex items-center gap-4">
+              {/* User Info */}
+              <div className="flex items-center gap-3 px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded-lg">
+                <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                  {(user?.name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-surface-900 dark:text-surface-50 truncate">
+                    {user?.name || user?.email || 'User'}
+                  </p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">Admin</p>
+                </div>
+              </div>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+                title="Toggle dark/light mode"
+              >
+                {theme === 'light' ? (
+                  <Moon className="w-5 h-5 text-surface-600" />
+                ) : (
+                  <Sun className="w-5 h-5 text-surface-400" />
+                )}
+              </button>
+
+              {/* Language Toggle */}
+              <button
+                onClick={toggleLanguage}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300 text-sm font-medium"
+              >
+                <Globe className="w-4 h-4" />
+                <span>{language === 'es' ? 'EN' : 'ES'}</span>
+              </button>
+
+              {/* Security/Settings */}
+              <button
+                className="flex items-center gap-2 px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300"
+                title="Security Settings"
+              >
+                <Shield className="w-5 h-5" />
+                <span className="text-sm">Security</span>
+              </button>
+
+              {/* Logout */}
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors text-red-600 dark:text-red-400"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm">Logout</span>
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+              >
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu */}
+          {isMenuOpen && (
+            <div className="md:hidden pb-4 space-y-2 border-t border-surface-200 dark:border-surface-700 pt-4">
+              <div className="flex items-center gap-3 px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded-lg mb-4">
+                <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                  {(user?.name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-surface-900 dark:text-surface-50 truncate">
+                    {user?.name || user?.email || 'User'}
+                  </p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">Admin</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  toggleTheme();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300"
+              >
+                {theme === 'light' ? (
+                  <>
+                    <Moon className="w-5 h-5" />
+                    <span>Dark Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun className="w-5 h-5" />
+                    <span>Light Mode</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  toggleLanguage();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300"
+              >
+                <Globe className="w-5 h-5" />
+                <span>{language === 'es' ? 'English' : 'Español'}</span>
+              </button>
+
+              <button className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300">
+                <Shield className="w-5 h-5" />
+                <span>Security</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onLogout();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors text-red-600 dark:text-red-400"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary-500 to-primary-600 dark:from-primary-600 dark:to-primary-700 px-6 py-12 sm:py-16">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-            Welcome to Pirate Ship
-          </h1>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Welcome back, {user?.name?.split(' ')[0] || 'User'}!
+          </h2>
           <p className="text-primary-100 text-lg mb-8">
             Manage your projects and collaborate with your team efficiently
           </p>
@@ -100,8 +257,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     onClick={() => onSelectWorkspace(workspace)}
                     className="group cursor-pointer"
                   >
-                    <div className="h-full bg-surface-100 dark:bg-surface-800 rounded-lg p-6 hover:shadow-lg dark:hover:shadow-lg transition-all duration-300 border border-surface-200 dark:border-surface-700 hover:border-primary-500 dark:hover:border-primary-500"
-                    >
+                    <div className="h-full bg-surface-100 dark:bg-surface-800 rounded-lg p-6 hover:shadow-lg dark:hover:shadow-lg transition-all duration-300 border border-surface-200 dark:border-surface-700 hover:border-primary-500 dark:hover:border-primary-500">
                       {/* Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">

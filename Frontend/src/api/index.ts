@@ -180,7 +180,14 @@ export const addWorkspaceMember = async (
   email: string,
   role: string
 ): Promise<any> => {
-  const { data } = await api.post(`/workspaces/${workspaceId}/members`, { email, role });
+  // First, search for user by email
+  const users = await searchUsers(email);
+  if (users.length === 0) {
+    throw new Error('User not found');
+  }
+  const userId = users[0].id;
+  
+  const { data } = await api.post(`/workspaces/${workspaceId}/members`, { userId, role });
   return data;
 };
 
@@ -211,7 +218,14 @@ export const addBoardMember = async (
   email: string,
   role: string
 ): Promise<any> => {
-  const { data } = await api.post(`/boards/${boardId}/members`, { email, role });
+  // First, search for user by email
+  const users = await searchUsers(email);
+  if (users.length === 0) {
+    throw new Error('User not found');
+  }
+  const userId = users[0].id;
+  
+  const { data } = await api.post(`/boards/${boardId}/members`, { userId, role });
   return data;
 };
 

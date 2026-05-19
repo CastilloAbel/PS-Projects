@@ -123,6 +123,7 @@ function AppContent() {
             setCurrentView('workspace');
           }}
           onCreateWorkspace={handleCreateWorkspace}
+          onLogout={handleLogout}
           loading={loading}
         />
         <ErrorModal error={error} onClose={clearError} />
