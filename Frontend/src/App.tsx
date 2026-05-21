@@ -11,7 +11,8 @@ import { LoginPage } from './components/LoginPage';
 import { AuthCallbackPage } from './components/AuthCallbackPage';
 import { HomePage } from './components/HomePage';
 import { WorkspaceView } from './components/WorkspaceView';
-import { fetchWorkspaces, logoutUser } from './api';
+import { CreateWorkspaceModal } from './components/CreateWorkspaceModal';
+import { fetchWorkspaces, logoutUser, createWorkspace } from './api';
 import type { Workspace } from './types';
 
 function AppContent() {
@@ -21,6 +22,8 @@ function AppContent() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false);
 
   // Detect callback route
   useEffect(() => {
@@ -83,8 +86,32 @@ function AppContent() {
   };
 
   const handleCreateWorkspace = () => {
-    // TODO: Open create workspace modal/dialog
-    console.log('Create workspace');
+    setShowCreateWorkspaceModal(true);
+  };
+
+  const handleSubmitCreateWorkspace = async (name: string, description?: string) => {
+    setCreatingWorkspace(true);
+    try {
+      const newWorkspace = await createWorkspace(name, description);
+      // Ensure the new workspace has proper structure
+      const sanitizedWs = {
+        ...newWorkspace,
+        boards: (newWorkspace.boards || []).map(b => ({
+          ...b,
+          lists: b.lists || [],
+        })),
+      };
+      setWorkspaces([...workspaces, sanitizedWs]);
+      setShowCreateWorkspaceModal(false);
+      // Optionally auto-select the new workspace
+      setSelectedWorkspace(sanitizedWs);
+      setCurrentView('workspace');
+    } catch (err) {
+      console.error('Error creating workspace:', err);
+      throw err;
+    } finally {
+      setCreatingWorkspace(false);
+    }
   };
 
   if (authLoading) {
@@ -126,6 +153,14 @@ function AppContent() {
           onLogout={handleLogout}
           loading={loading}
         />
+        {showCreateWorkspaceModal && (
+          <CreateWorkspaceModal
+            isOpen={showCreateWorkspaceModal}
+            isLoading={creatingWorkspace}
+            onSubmit={handleSubmitCreateWorkspace}
+            onClose={() => setShowCreateWorkspaceModal(false)}
+          />
+        )}
         <ErrorModal error={error} onClose={clearError} />
       </>
     );

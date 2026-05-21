@@ -102,7 +102,7 @@ export interface Board {
   workspaceId: string;
   ownerId?: string;
   lists: List[];
-  boardMembers?: BoardMember[];
+  members?: BoardMember[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -113,7 +113,7 @@ export interface Workspace {
   description: string | null;
   ownerId?: string;
   boards?: Board[];
-  workspaceMembers?: WorkspaceMember[];
+  members?: WorkspaceMember[];
   createdAt?: string;
   updatedAt?: string;
 }

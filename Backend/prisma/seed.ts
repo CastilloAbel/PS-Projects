@@ -43,7 +43,101 @@ async function main() {
     },
   });
 
-  console.log('Seed completado:', { admin, user1, user2 });
+  // Create demo workspace for admin
+  const workspace = await prisma.workspace.upsert({
+    where: { id: 'workspace-demo' },
+    update: {},
+    create: {
+      id: 'workspace-demo',
+      name: 'Proyecto Kanban Demo',
+      description: 'Espacio de trabajo demostrativo para Pirate Ship',
+      members: {
+        create: [
+          { userId: admin.id, role: 'OWNER' },
+          { userId: user1.id, role: 'ADMIN' }
+        ]
+      }
+    },
+  });
+
+  // Create demo board in workspace
+  const board = await prisma.board.upsert({
+    where: { id: 'board-demo' },
+    update: {},
+    create: {
+      id: 'board-demo',
+      name: 'Mi Primer Proyecto',
+      workspaceId: workspace.id,
+      ownerId: admin.id,
+      members: {
+        create: [
+          { userId: admin.id, role: 'OWNER' },
+          { userId: user1.id, role: 'ADMIN' }
+        ]
+      },
+      lists: {
+        create: [
+          {
+            id: 'list-todo',
+            name: 'Por Hacer',
+            order: 0,
+            cards: {
+              create: [
+                {
+                  id: 'card-1',
+                  title: 'Diseñar interfaz',
+                  description: 'Crear mockups de la UI principal',
+                  order: 0,
+                  assigneeId: admin.id
+                },
+                {
+                  id: 'card-2',
+                  title: 'Configurar backend',
+                  description: 'Establecer la API REST',
+                  order: 1,
+                  assigneeId: user1.id
+                }
+              ]
+            }
+          },
+          {
+            id: 'list-doing',
+            name: 'En Progreso',
+            order: 1,
+            cards: {
+              create: [
+                {
+                  id: 'card-3',
+                  title: 'Implementar autenticación',
+                  description: 'JWT + OAuth2 con Google',
+                  order: 0,
+                  assigneeId: admin.id
+                }
+              ]
+            }
+          },
+          {
+            id: 'list-done',
+            name: 'Hecho',
+            order: 2,
+            cards: {
+              create: [
+                {
+                  id: 'card-4',
+                  title: 'Inicializar base de datos',
+                  description: 'PostgreSQL con Prisma ORM',
+                  order: 0,
+                  assigneeId: admin.id
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+  });
+
+  console.log('Seed completado:', { admin, user1, user2, workspace, board });
 }
 
 main()

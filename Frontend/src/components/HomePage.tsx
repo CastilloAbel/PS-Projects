@@ -3,6 +3,7 @@ import { Plus, Loader2, FolderOpen, Users, Calendar, ArrowRight, Moon, Sun, Glob
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { SecurityModal } from './SecurityModal';
 import type { Workspace } from '../types';
 
 interface HomePageProps {
@@ -25,6 +26,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
 
   const filteredWorkspaces = workspaces.filter((ws) =>
     ws.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,6 +89,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
               {/* Security/Settings */}
               <button
+                onClick={() => setShowSecurityModal(true)}
                 className="flex items-center gap-2 px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors text-surface-700 dark:text-surface-300"
                 title="Security Settings"
               >
@@ -287,7 +290,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                         <div className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                           <Users className="w-4 h-4" />
                           <span>
-                            {workspace.workspaceMembers?.length || 0} member{(workspace.workspaceMembers?.length || 0) !== 1 ? 's' : ''}
+                            {workspace.members?.length || 0} member{(workspace.members?.length || 0) !== 1 ? 's' : ''}
                           </span>
                         </div>
                         {workspace.createdAt && (
@@ -351,6 +354,15 @@ export const HomePage: React.FC<HomePageProps> = ({
           </>
         )}
       </div>
+
+      {/* Security Modal */}
+      {showSecurityModal && (
+        <SecurityModal
+          isOpen={showSecurityModal}
+          userName={user?.name || user?.email || 'User'}
+          onClose={() => setShowSecurityModal(false)}
+        />
+      )}
     </div>
   );
 };

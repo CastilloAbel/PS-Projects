@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { Board } from './Board';
 import { RoleManagement } from './RoleManagement';
+import { CreateBoardModal } from './CreateBoardModal';
 import { useTheme } from '../context/ThemeContext';
 import { usePermission } from '../context/PermissionContext';
 import {
@@ -43,6 +44,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   const [selectedBoard, setSelectedBoard] = useState<BoardType | null>(null);
   const [showRoleManagement, setShowRoleManagement] = useState<'board' | 'workspace' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [creatingBoard, setCreatingBoard] = useState(false);
 
   // Update workspace when prop changes
   useEffect(() => {
@@ -52,7 +55,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   // Set workspace context when workspace changes
   useEffect(() => {
     if (workspace) {
-      setWorkspaceContext(workspace.id, workspace.workspaceMembers?.[0]?.role as any || null);
+      setWorkspaceContext(workspace.id, workspace.members?.[0]?.role as any || null);
     }
   }, [workspace, setWorkspaceContext]);
 
@@ -66,12 +69,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
         ...completeBoard,
         lists: completeBoard.lists || [],
       });
-      setBoardContext(completeBoard.id, (completeBoard.boardMembers?.[0]?.role as any) || null);
+      setBoardContext(completeBoard.id, (completeBoard.members?.[0]?.role as any) || null);
     } catch (error) {
       console.error('Error loading board:', error);
       // Fallback to the provided board data
       setSelectedBoard(board);
-      setBoardContext(board.id, (board.boardMembers?.[0]?.role as any) || null);
+      setBoardContext(board.id, (board.members?.[0]?.role as any) || null);
     } finally {
       setLoading(false);
     }
@@ -86,7 +89,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getWorkspaceMembers(workspace.id);
       setWorkspace({
         ...workspace,
-        workspaceMembers: members as WorkspaceMember[],
+        members: members as WorkspaceMember[],
       });
     } catch (error) {
       console.error('Error adding workspace member:', error);
@@ -105,7 +108,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getWorkspaceMembers(workspace.id);
       setWorkspace({
         ...workspace,
-        workspaceMembers: members as WorkspaceMember[],
+        members: members as WorkspaceMember[],
       });
     } catch (error) {
       console.error('Error updating workspace member role:', error);
@@ -124,7 +127,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getWorkspaceMembers(workspace.id);
       setWorkspace({
         ...workspace,
-        workspaceMembers: members as WorkspaceMember[],
+        members: members as WorkspaceMember[],
       });
     } catch (error) {
       console.error('Error removing workspace member:', error);
@@ -144,7 +147,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getBoardMembers(selectedBoard.id);
       setSelectedBoard({
         ...selectedBoard,
-        boardMembers: members as BoardMember[],
+        members: members as BoardMember[],
       });
     } catch (error) {
       console.error('Error adding board member:', error);
@@ -164,7 +167,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getBoardMembers(selectedBoard.id);
       setSelectedBoard({
         ...selectedBoard,
-        boardMembers: members as BoardMember[],
+        members: members as BoardMember[],
       });
     } catch (error) {
       console.error('Error updating board member role:', error);
@@ -184,7 +187,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       const members = await getBoardMembers(selectedBoard.id);
       setSelectedBoard({
         ...selectedBoard,
-        boardMembers: members as BoardMember[],
+        members: members as BoardMember[],
       });
     } catch (error) {
       console.error('Error removing board member:', error);
@@ -195,23 +198,36 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   };
 
   // Handle create board
-  const handleCreateBoard = async () => {
-    const boardName = prompt('Enter board name:', 'New Board');
-    if (!boardName) return;
+  const handleCreateBoard = () => {
+    setShowCreateBoardModal(true);
+  };
 
-    setLoading(true);
+  const handleSubmitCreateBoard = async (name: string, background?: string) => {
+    setCreatingBoard(true);
     try {
-      const newBoard = await createBoard(boardName, workspace.id);
+      const newBoard = await createBoard(name, workspace.id, background);
       
+      // Ensure the new board has lists array
+      const sanitizedBoard = {
+        ...newBoard,
+        lists: newBoard.lists || [],
+      };
+
       // Update workspace with new board
       setWorkspace({
         ...workspace,
-        boards: [...(workspace.boards || []), newBoard],
+        boards: [...(workspace.boards || []), sanitizedBoard],
       });
+
+      setShowCreateBoardModal(false);
+      // Auto-select the new board
+      setSelectedBoard(sanitizedBoard);
+      setBoardContext(sanitizedBoard.id, (sanitizedBoard.members?.[0]?.role as any) || null);
     } catch (error) {
       console.error('Error creating board:', error);
+      throw error;
     } finally {
-      setLoading(false);
+      setCreatingBoard(false);
     }
   };
 
@@ -329,9 +345,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       {showRoleManagement === 'workspace' && (
         <RoleManagement
           type="workspace"
-          members={(workspace.workspaceMembers || []) as WorkspaceMember[]}
-          currentUserRole={workspace.workspaceMembers?.[0]?.role as any}
-          isOwner={workspace.ownerId === workspace.workspaceMembers?.[0]?.userId}
+          members={(workspace.members || []) as WorkspaceMember[]}
+          currentUserRole={workspace.members?.[0]?.role as any}
+          isOwner={workspace.ownerId === workspace.members?.[0]?.userId}
           onAddMember={handleAddWorkspaceMember}
           onUpdateRole={handleUpdateWorkspaceMemberRole}
           onRemoveMember={handleRemoveWorkspaceMember}
@@ -342,13 +358,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       {showRoleManagement === 'board' && selectedBoard && (
         <RoleManagement
           type="board"
-          members={(selectedBoard.boardMembers || []) as BoardMember[]}
-          currentUserRole={selectedBoard.boardMembers?.[0]?.role as any}
-          isOwner={selectedBoard.ownerId === selectedBoard.boardMembers?.[0]?.userId}
+          members={(selectedBoard.members || []) as BoardMember[]}
+          currentUserRole={selectedBoard.members?.[0]?.role as any}
+          isOwner={selectedBoard.ownerId === selectedBoard.members?.[0]?.userId}
           onAddMember={handleAddBoardMember}
           onUpdateRole={handleUpdateBoardMemberRole}
           onRemoveMember={handleRemoveBoardMember}
           onClose={() => setShowRoleManagement(null)}
+        />
+      )}
+
+      {/* Create Board Modal */}
+      {showCreateBoardModal && (
+        <CreateBoardModal
+          isOpen={showCreateBoardModal}
+          isLoading={creatingBoard}
+          workspaceName={workspace.name}
+          onSubmit={handleSubmitCreateBoard}
+          onClose={() => setShowCreateBoardModal(false)}
         />
       )}
     </div>

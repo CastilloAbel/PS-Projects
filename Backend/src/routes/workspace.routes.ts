@@ -101,7 +101,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         }
       },
       include: {
-        members: true
+        boards: true,
+        members: {
+          select: { role: true }
+        }
       }
     });
 
