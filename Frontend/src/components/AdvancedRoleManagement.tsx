@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { X, Plus, Trash2, Edit2, AlertCircle, Loader2, Search, User, Shield, Info } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, AlertCircle, Loader2, Search, User, Shield, Info, Mail } from 'lucide-react';
 import { searchUsers } from '../api';
+import { InviteModal } from './InviteModal';
 import type { BoardMember, WorkspaceMember, BoardRole, WorkspaceRole, User as UserType } from '../types';
 
 interface AdvancedRoleManagementProps {
   type: 'board' | 'workspace';
+  resourceId?: string; // workspace ID or board ID
   members: (BoardMember | WorkspaceMember)[];
   currentUserRole: BoardRole | WorkspaceRole | null;
   isOwner: boolean;
@@ -34,6 +36,7 @@ const roleColors: Record<string, string> = {
 
 export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
   type,
+  resourceId,
   members,
   currentUserRole,
   isOwner,
@@ -53,6 +56,7 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<BoardRole | WorkspaceRole>('VIEWER');
   const [showPermissionMatrix, setShowPermissionMatrix] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const roles: (BoardRole | WorkspaceRole)[] = type === 'board'
     ? ['OWNER', 'ADMIN', 'EDITOR', 'COMMENTER', 'VIEWER']
@@ -233,10 +237,20 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
           {/* Add Member Form */}
           {canManageRoles && (
             <div className="p-4 bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 rounded-lg">
-              <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-4 flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Add New Member
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-surface-900 dark:text-surface-50 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add New Member
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 px-3 py-1 text-sm bg-secondary-500 hover:bg-secondary-600 text-white rounded-lg transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Invite by Email
+                </button>
+              </div>
               <form onSubmit={handleAddMember} className="space-y-4">
                 <div className="relative">
                   <div className="flex items-center gap-2 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800">
@@ -445,6 +459,21 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <InviteModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          type={type}
+          workspaceId={type === 'workspace' ? resourceId : undefined}
+          boardId={type === 'board' ? resourceId : undefined}
+          onInviteSent={() => {
+            // Optionally refresh the members list
+            // onRefreshMembers?.();
+          }}
+        />
+      )}
     </div>
   );
 };

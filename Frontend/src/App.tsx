@@ -11,6 +11,7 @@ import { LoginPage } from './components/LoginPage';
 import { AuthCallbackPage } from './components/AuthCallbackPage';
 import { HomePage } from './components/HomePage';
 import { WorkspaceView } from './components/WorkspaceView';
+import { AcceptInvitation } from './components/AcceptInvitation';
 import { CreateWorkspaceModal } from './components/CreateWorkspaceModal';
 import { fetchWorkspaces, logoutUser, createWorkspace } from './api';
 import type { Workspace } from './types';
@@ -18,17 +19,19 @@ import type { Workspace } from './types';
 function AppContent() {
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
   const { error, clearError } = useError();
-  const [currentView, setCurrentView] = useState<'login' | 'callback' | 'home' | 'workspace'>('home');
+  const [currentView, setCurrentView] = useState<'login' | 'callback' | 'invitation' | 'home' | 'workspace'>('home');
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
 
-  // Detect callback route
+  // Detect callback route and invitation route
   useEffect(() => {
     if (window.location.pathname === '/auth/callback') {
       setCurrentView('callback');
+    } else if (window.location.pathname.startsWith('/accept-invitation/')) {
+      setCurrentView('invitation');
     }
   }, []);
 
@@ -126,6 +129,15 @@ function AppContent() {
     return (
       <>
         <AuthCallbackPage onSuccess={() => setCurrentView('home')} />
+        <ErrorModal error={error} onClose={clearError} />
+      </>
+    );
+  }
+
+  if (currentView === 'invitation') {
+    return (
+      <>
+        <AcceptInvitation />
         <ErrorModal error={error} onClose={clearError} />
       </>
     );

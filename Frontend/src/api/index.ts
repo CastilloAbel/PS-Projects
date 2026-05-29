@@ -254,3 +254,36 @@ export const removeBoardMember = async (
 ): Promise<void> => {
   await api.delete(`/boards/${boardId}/members/${memberId}`);
 };
+
+// ============================================================================
+// INVITATIONS
+// ============================================================================
+
+export const sendWorkspaceInvitation = async (
+  workspaceId: string,
+  email: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.post(`/workspaces/${workspaceId}/invitations`, {
+    email,
+    role,
+  });
+  return data;
+};
+
+export const getWorkspaceInvitations = async (workspaceId: string): Promise<any> => {
+  const { data } = await api.get(`/workspaces/${workspaceId}/invitations`);
+  return data;
+};
+
+export const cancelWorkspaceInvitation = async (
+  workspaceId: string,
+  invitationId: string
+): Promise<void> => {
+  await api.delete(`/workspaces/${workspaceId}/invitations/${invitationId}`);
+};
+
+export const acceptInvitation = async (token: string, userId: string): Promise<any> => {
+  const { data } = await api.post(`/invitations/${token}/accept`, { userId });
+  return data;
+};

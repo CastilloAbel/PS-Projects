@@ -1,0 +1,196 @@
+================================================================================
+DETAILED BACKEND CRASH ANALYSIS - SILENT STARTUP FAILURE
+================================================================================
+Analysis Date: May 29, 2026
+Project: PS-projects Backend
+Working Directory: D:\Abel\Documents\Proyectos\PS-projects\Backend
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+The backend server crashes silently on startup due to TypeScript compilation 
+failures caused by MISSING FILES and INCORRECT IMPORT PATHS. The server never 
+reaches the startup console.log() because compilation fails before execution.
+
+Total Errors Found: 7 TypeScript compilation errors
+Severity: CRITICAL - Server cannot start
+
+================================================================================
+ROOT CAUSE ANALYSIS
+================================================================================
+
+PRIMARY ISSUE: Missing Utility Files and Incorrect Module Paths
+- invitation.routes.ts imports from non-existent files/directories
+- These import errors prevent TypeScript compilation
+- Compilation failure prevents server startup
+- Error output might not be visible depending on terminal/nodemon config
+
+SECONDARY ISSUE: Database Connection Anti-Pattern
+- member.routes.ts creates new PrismaClient() on each import
+- Violates singleton pattern defined in prisma.ts
+- Could cause connection pool exhaustion after compilation is fixed
+
+================================================================================
+DETAILED ERRORS
+================================================================================
+
+ERROR 1: Cannot find module '../middleware/auth'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:2
+Line: import { requireAuth } from '../middleware/auth';
+Issue: Directory 'src/middleware/' does not exist
+Fix: Create src/middleware/auth.ts file
+
+ERROR 2: Cannot find module '../middleware/authorization'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:3
+Line: import { requireWorkspacePermission } from '../middleware/authorization';
+Issue: Directory 'src/middleware/' does not exist
+Fix: Create src/middleware/authorization.ts file
+
+ERROR 3: Cannot find module '../db'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:4
+Line: import { prisma } from '../db';
+Issue: File 'src/db.ts' does not exist
+Note: src/prisma.ts exists instead
+Fix: Create src/db.ts as wrapper/re-export
+
+ERROR 4: Cannot find module '../utils/logger'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:5
+Line: import { logger } from '../utils/logger';
+Issue: File 'src/utils/logger.ts' does not exist
+Note: src/logger.ts exists at root level
+Fix: Create src/utils/logger.ts wrapper or update import path
+
+ERROR 5: Cannot find module '../utils/auditLogger'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:8
+Line: import { logAudit } from '../utils/auditLogger';
+Issue: File 'src/utils/auditLogger.ts' does not exist
+Note: logAudit function exists in src/authorization.ts
+Fix: Create src/utils/auditLogger.ts wrapper/re-export
+
+ERROR 6: Cannot find module '../utils/helpers'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\invitation.routes.ts:9
+Line: import { getParam } from '../utils/helpers';
+Issue: File 'src/utils/helpers.ts' does not exist
+Note: getParam function is duplicated in member.routes.ts but no shared utility
+Fix: Create src/utils/helpers.ts with shared utility functions
+
+ERROR 7: Cannot find module './logger'
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\services\emailService.ts:2
+Line: import { logger } from './logger';
+Issue: Directory 'src/services/logger.ts' does not exist
+Note: Logger is at src/logger.ts
+Fix: Update import path to '../logger'
+
+================================================================================
+SECONDARY CODE ISSUES
+================================================================================
+
+ISSUE A: Dynamic requires in index.ts
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\index.ts:67-178
+Lines: 68-71
+Code:
+  const { prisma } = require('./db');           // ERROR: db.ts missing
+  const { logger } = require('./utils/logger');  // ERROR: wrong path
+  const { getParam } = require('./utils/helpers'); // ERROR: file missing
+  const { logAudit } = require('./utils/auditLogger'); // ERROR: file missing
+
+Problem: Even if these files existed, dynamic requires in compiled code are problematic
+Fix: Use static imports at top of file instead
+
+ISSUE B: Anti-pattern PrismaClient instantiation
+Location: D:\Abel\Documents\Proyectos\PS-projects\Backend\src\routes\member.routes.ts:13
+Code: const prisma = new PrismaClient();
+Problem: 
+  - Creates new DB connection on each import
+  - Violates singleton pattern from src/prisma.ts
+  - Can exhaust connection pool
+  - prisma.ts already handles singleton correctly
+Fix: Remove this line and import: import { prisma } from '../prisma';
+
+ISSUE C: Inconsistent import paths for logger
+Location: Multiple files
+Files affected:
+  - src/routes/workspace.routes.ts:4 → import logger from '../logger' ✓ CORRECT
+  - src/middleware.ts:3 → import logger from './logger' ✓ CORRECT
+  - src/routes/invitation.routes.ts:5 → import { logger } from '../utils/logger' ✗ WRONG
+  - src/services/emailService.ts:2 → import { logger } from './logger' ✗ WRONG
+Fix: Standardize all logger imports to: import logger from '../logger'
+
+================================================================================
+FILE STRUCTURE ANALYSIS
+================================================================================
+
+CURRENT STRUCTURE:
+D:\Abel\Documents\Proyectos\PS-projects\Backend\src\
+├── __tests__/
+├── routes/  (12 files - ALL PRESENT ✓)
+│   ├── activity.routes.ts ✓
+│   ├── auth.routes.ts ✓
+│   ├── board.routes.ts ✓
+│   ├── card.routes.ts ✓
+│   ├── comment.routes.ts ✓
+│   ├── invitation.routes.ts ✓ (but has import errors)
+│   ├── list.routes.ts ✓
+│   ├── member.routes.ts ✓ (but has PrismaClient issue)
+│   ├── oauth.routes.ts ✓
+│   ├── tag.routes.ts ✓
+│   ├── user.routes.ts ✓
+│   └── workspace.routes.ts ✓
+├── services/
+│   └── emailService.ts (has wrong logger import)
+├── utils/
+│   └── invitationUtils.ts ✓
+├── authMiddleware.ts ✓
+├── authorization.ts ✓
+├── index.ts ✓ (but has require errors)
+├── logger.ts ✓
+├── middleware.ts ✓
+├── passport.ts ✓
+├── prisma.ts ✓
+├── schemas.ts ✓
+└── validation.ts ✓
+
+MISSING STRUCTURE:
+D:\Abel\Documents\Proyectos\PS-projects\Backend\src\
+├── db.ts ✗ MISSING
+├── middleware/ ✗ MISSING DIRECTORY
+│   ├── auth.ts ✗
+│   └── authorization.ts ✗
+└── utils/
+    ├── logger.ts ✗
+    ├── helpers.ts ✗
+    └── auditLogger.ts ✗
+
+================================================================================
+CIRCULAR DEPENDENCY CHECK
+================================================================================
+
+Analyzed import chains for circular dependencies:
+- index.ts → middleware.ts → (no circular refs)
+- index.ts → routes → (no circular refs)
+- passport.ts → prisma.ts → (no circular refs)
+- authorization.ts → prisma.ts → (no circular refs)
+
+Result: NO CIRCULAR DEPENDENCIES DETECTED ✓
+
+The import structure is well-organized, but missing files prevent compilation.
+
+================================================================================
+DATABASE CONNECTION ANALYSIS
+================================================================================
+
+GOOD:
+✓ src/prisma.ts uses singleton pattern correctly
+✓ Prevents multiple PrismaClient instances in development
+✓ Global caching for hot-reloading
+
+BAD:
+✗ src/routes/member.routes.ts:13 creates new PrismaClient()
+  - This will override the singleton pattern
+  - Creates unnecessary connection
+  - Should use: import { prisma } from '../prisma';
+
+MISSING:
+✗ src/db.ts doesn't exist
+  - index.ts:68 tries to require(

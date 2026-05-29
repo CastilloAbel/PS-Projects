@@ -27,6 +27,8 @@ model User {
   activities    Activity[]
   boardMembers  BoardMember[]
   auditLogs     AuditLog[]
+  workspaceInvitationsCreated WorkspaceInvitation[] @relation("WorkspaceInvitationCreator")
+  boardInvitationsCreated BoardInvitation[] @relation("BoardInvitationCreator")
 }
 
 // 2. Espacios de trabajo (La Flota / Barcos)
@@ -41,6 +43,7 @@ model Workspace {
   members WorkspaceMember[]
   boards  Board[]
   tags    Tag[]
+  invitations WorkspaceInvitation[]
 }
 
 // Tabla pivote para Usuarios y Workspaces (Colaboración)
@@ -96,6 +99,7 @@ model Board {
   
   lists       List[]
   members     BoardMember[]
+  invitations BoardInvitation[]
 }
 
 // Tabla pivote para Usuarios y Boards (Control de acceso por Board)
@@ -226,4 +230,59 @@ model AuditLog {
   userAgent   String?
   
   createdAt   DateTime @default(now())
+}
+
+// Invitaciones a Workspaces
+model WorkspaceInvitation {
+  id          String   @id @default(uuid())
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  token       String   @unique
+  status      InvitationStatus @default(PENDING) // PENDING, ACCEPTED, REJECTED, EXPIRED
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  invitedBy   String
+  invitedByUser User @relation("WorkspaceInvitationCreator", fields: [invitedBy], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([token])
+  @@index([email])
+  @@index([workspaceId])
+}
+
+// Invitaciones a Boards
+model BoardInvitation {
+  id          String   @id @default(uuid())
+  email       String
+  role        BoardRole @default(VIEWER)
+  token       String   @unique
+  status      InvitationStatus @default(PENDING) // PENDING, ACCEPTED, REJECTED, EXPIRED
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  invitedBy   String
+  invitedByUser User @relation("BoardInvitationCreator", fields: [invitedBy], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([token])
+  @@index([email])
+  @@index([boardId])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
