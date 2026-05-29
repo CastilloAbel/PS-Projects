@@ -77,6 +77,30 @@ router.post(
         return res.status(400).json({ error: 'User is already a board member' });
       }
 
+      // Check if user is member of workspace, if not, add them automatically
+      const workspaceMembership = await prisma.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: board.workspaceId,
+          },
+        },
+      });
+
+      if (!workspaceMembership) {
+        // Auto-add to workspace as MEMBER role
+        await prisma.workspaceMember.create({
+          data: {
+            userId,
+            workspaceId: board.workspaceId,
+            role: 'MEMBER',
+          },
+        });
+        logger.info(`User ${userId} auto-added to workspace ${board.workspaceId} (added to board)`, {
+          userId: requesterId,
+        });
+      }
+
       // Create board member
       const boardMember = await prisma.boardMember.create({
         data: {

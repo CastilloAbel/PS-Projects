@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, AlignLeft, UserCircle2, Flag, Calendar, Tag as TagIcon, MessageCircle, Activity } from 'lucide-react';
+import { X, AlignLeft, UserCircle2, Flag, Calendar, Tag as TagIcon, MessageCircle, Activity, Lock, AlertCircle } from 'lucide-react';
 import { type Card, type Priority, type Tag, MOCK_USERS } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePermission } from '../context/PermissionContext';
 
 interface CardModalProps {
   card: Card;
@@ -28,6 +29,7 @@ const priorityIcons: Record<Priority, number> = {
 export const CardModal: React.FC<CardModalProps> = ({ card, workspaceTags = [], onClose, onSave }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { canEditCard, boardRole } = usePermission();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description || '');
   const [assigneeId, setAssigneeId] = useState(card.assigneeId || '');
@@ -78,17 +80,35 @@ export const CardModal: React.FC<CardModalProps> = ({ card, workspaceTags = [], 
       >
         {/* Header */}
         <div className="flex justify-between items-start sm:items-center p-4 sm:p-6 border-b border-inherit gap-2">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={`text-lg sm:text-2xl font-bold bg-transparent outline-none w-full ${textClass} focus:underline decoration-primary-500 underline-offset-4 leading-tight`}
-            placeholder={t('taskTitle')}
-          />
+           <input
+                     type="text"
+                     value={title}
+                     onChange={(e) => setTitle(e.target.value)}
+                     disabled={!canEditCard}
+                     className={`text-lg sm:text-2xl font-bold bg-transparent outline-none w-full ${textClass} focus:underline decoration-primary-500 underline-offset-4 leading-tight ${!canEditCard ? 'opacity-60 cursor-not-allowed' : ''}`}
+                     placeholder={t('taskTitle')}
+                   />
           <button onClick={onClose} className="p-1 sm:p-2 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors shrink-0">
             <X size={20} className={`sm:w-6 sm:h-6 ${labelClass}`} />
           </button>
         </div>
+
+        {/* Permission Restriction Alert */}
+        {!canEditCard && (
+          <div className="px-4 sm:px-6 py-3 bg-yellow-50 dark:bg-yellow-950 border-b border-yellow-200 dark:border-yellow-800 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                Limited Permissions
+              </p>
+              <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                {boardRole === 'VIEWER' && 'You can only view this card. Contact a board member to make changes.'}
+                {boardRole === 'COMMENTER' && 'You can view and comment, but cannot edit this card.'}
+                {boardRole === 'EDITOR' && 'As an Editor, you can only edit cards assigned to you.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className={`flex border-b ${theme === 'dark' ? 'border-surface-700' : 'border-surface-200'}`}>
@@ -306,7 +326,13 @@ export const CardModal: React.FC<CardModalProps> = ({ card, workspaceTags = [], 
           <button onClick={onClose} className="btn-secondary text-sm sm:text-base py-1.5 px-3 sm:py-2 sm:px-4">
             Cancelar
           </button>
-          <button onClick={handleSave} className="btn-primary text-sm sm:text-base py-1.5 px-3 sm:py-2 sm:px-4">
+          <button 
+            onClick={handleSave} 
+            disabled={!canEditCard}
+            className={`btn-primary text-sm sm:text-base py-1.5 px-3 sm:py-2 sm:px-4 flex items-center gap-2 ${!canEditCard ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={!canEditCard ? 'You do not have permission to edit this card' : 'Save changes'}
+          >
+            {!canEditCard && <Lock className="w-4 h-4" />}
             Guardar cambios
           </button>
         </div>

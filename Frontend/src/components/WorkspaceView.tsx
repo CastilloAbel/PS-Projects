@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { Board } from './Board';
-import { RoleManagement } from './RoleManagement';
+import { AdvancedRoleManagement } from './AdvancedRoleManagement';
 import { CreateBoardModal } from './CreateBoardModal';
 import { useTheme } from '../context/ThemeContext';
 import { usePermission } from '../context/PermissionContext';
@@ -343,7 +343,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
 
       {/* Role Management Modal */}
       {showRoleManagement === 'workspace' && (
-        <RoleManagement
+        <AdvancedRoleManagement
           type="workspace"
           members={(workspace.members || []) as WorkspaceMember[]}
           currentUserRole={workspace.members?.[0]?.role as any}
@@ -356,7 +356,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       )}
 
       {showRoleManagement === 'board' && selectedBoard && (
-        <RoleManagement
+        <AdvancedRoleManagement
           type="board"
           members={(selectedBoard.members || []) as BoardMember[]}
           currentUserRole={selectedBoard.members?.[0]?.role as any}
