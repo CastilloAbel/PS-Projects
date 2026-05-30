@@ -19,9 +19,8 @@ import invitationRoutes from './routes/invitation.routes';
 import authRoutes from './routes/auth.routes';
 import oauthRoutes from './routes/oauth.routes';
 import { prisma } from './prisma';
-import { logger } from './logger';
-import { getParam } from './validation';
-import { logAudit } from './utils/auditLogger';
+import logger from './logger';
+import { logAudit } from './authorization';
 
 // Cargar variables de entorno
 dotenv.config(); // Carga desde .env en Backend/
@@ -70,6 +69,13 @@ app.use('/auth', oauthRoutes);
 // Rutas de invitaciones públicas (sin JWT requerido)
 app.post('/invitations/:token/accept', async (req: any, res) => {
   try {
+    // Helper para obtener parámetros de URL
+    const getParam = (param: string | string[] | undefined): string => {
+      if (!param) throw new Error('Parameter is required');
+      if (Array.isArray(param)) return param[0];
+      return param;
+    };
+
     const token = getParam(req.params.token);
     const { userId } = req.body as any;
 

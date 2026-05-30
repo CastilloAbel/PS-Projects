@@ -1,12 +1,16 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth';
-import { requireWorkspacePermission } from '../middleware/authorization';
-import { prisma } from '../db';
-import { logger } from '../utils/logger';
+import { verifyJWT } from '../middleware';
+import { isWorkspaceOwner, isWorkspaceAdmin, logAudit } from '../authorization';
+import { prisma } from '../prisma';
+import logger from '../logger';
 import { generateInvitationToken, getInvitationExpiryDate, generateInvitationLink } from '../utils/invitationUtils';
 import { sendWorkspaceInvitationEmail, sendBoardInvitationEmail } from '../services/emailService';
-import { logAudit } from '../utils/auditLogger';
-import { getParam } from '../utils/helpers';
+
+const getParam = (param: string | string[] | undefined): string => {
+  if (!param) throw new Error('Parameter is required');
+  if (Array.isArray(param)) return param[0];
+  return param;
+};
 
 const router = Router();
 
@@ -20,8 +24,7 @@ const router = Router();
  */
 router.post(
   '/workspaces/:workspaceId/invitations',
-  requireAuth,
-  requireWorkspacePermission('MANAGE_MEMBERS'),
+  verifyJWT,
   async (req: Request, res: Response) => {
     try {
       const workspaceId = getParam(req.params.workspaceId);
@@ -156,8 +159,7 @@ router.post(
  */
 router.get(
   '/workspaces/:workspaceId/invitations',
-  requireAuth,
-  requireWorkspacePermission('MANAGE_MEMBERS'),
+  verifyJWT,
   async (req: Request, res: Response) => {
     try {
       const workspaceId = getParam(req.params.workspaceId);
@@ -204,8 +206,7 @@ router.get(
  */
 router.delete(
   '/workspaces/:workspaceId/invitations/:invitationId',
-  requireAuth,
-  requireWorkspacePermission('MANAGE_MEMBERS'),
+  verifyJWT,
   async (req: Request, res: Response) => {
     try {
       const workspaceId = getParam(req.params.workspaceId);
