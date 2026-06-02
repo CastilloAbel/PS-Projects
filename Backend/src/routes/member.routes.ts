@@ -208,10 +208,7 @@ router.get(
         userId: requesterId,
       });
 
-      res.json({
-        success: true,
-        data: members,
-      });
+      res.json(members);
     } catch (error) {
       logger.error('Error listing board members', { error, userId: req.userId });
       res.status(500).json({ error: 'Internal server error' });
@@ -293,7 +290,11 @@ router.patch(
         data: boardMember,
       });
     } catch (error) {
-      logger.error('Error updating board member', { error, userId: req.userId });
+      logger.error('Error updating board member', { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        userId: req.userId 
+      });
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -512,10 +513,7 @@ router.get(
         userId: requesterId,
       });
 
-      res.json({
-        success: true,
-        data: members,
-      });
+      res.json(members);
     } catch (error) {
       logger.error('Error listing workspace members', { error, userId: req.userId });
       res.status(500).json({ error: 'Internal server error' });

@@ -57,6 +57,7 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
   const [editRole, setEditRole] = useState<BoardRole | WorkspaceRole>('VIEWER');
   const [showPermissionMatrix, setShowPermissionMatrix] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [invitingMemberId, setInvitingMemberId] = useState<string | null>(null);
 
   const roles: (BoardRole | WorkspaceRole)[] = type === 'board'
     ? ['OWNER', 'ADMIN', 'EDITOR', 'COMMENTER', 'VIEWER']
@@ -132,6 +133,28 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
       setError(err?.response?.data?.error || (err instanceof Error ? err.message : 'Failed to remove member'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInviteByEmail = async (member: BoardMember | WorkspaceMember) => {
+    const memberUser = member.user as any;
+    setInvitingMemberId(member.id);
+    setLoading(true);
+    setError('');
+    try {
+      if (type === 'board') {
+        const { sendBoardInvitation } = await import('../api');
+        await sendBoardInvitation(resourceId!, memberUser.email, member.role);
+      } else {
+        const { sendWorkspaceInvitation } = await import('../api');
+        await sendWorkspaceInvitation(resourceId!, memberUser.email, member.role);
+      }
+      alert('Invitation email sent successfully!');
+    } catch (err: any) {
+      setError(err?.response?.data?.error || (err instanceof Error ? err.message : 'Failed to send invitation'));
+    } finally {
+      setLoading(false);
+      setInvitingMemberId(null);
     }
   };
 
@@ -376,6 +399,26 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
                           {memberUser?.name || 'Unknown User'}
                         </p>
                         <p className="text-xs text-surface-500 dark:text-surface-400 truncate">{memberUser?.email}</p>
+                        {canManageRoles && memberRole !== 'OWNER' && (
+                          <button
+                            onClick={() => handleInviteByEmail(member)}
+                            disabled={loading || invitingMemberId === member.id}
+                            className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded text-xs transition-colors disabled:opacity-50"
+                            title="Send invitation email"
+                          >
+                            {invitingMemberId === member.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-3 h-3" />
+                                Invite
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
 
