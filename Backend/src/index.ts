@@ -1,9 +1,14 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Cargar variables de entorno PRIMERO, antes de cualquier otro import
+dotenv.config({ path: path.join(__dirname, '../.env') }); // Cargar desde raíz
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import dotenv from 'dotenv';
 import passport from './passport';
 import { verifyJWT, errorHandler, requestLogger } from './middleware';
 import workspaceRoutes from './routes/workspace.routes';
@@ -21,9 +26,6 @@ import oauthRoutes from './routes/oauth.routes';
 import { prisma } from './prisma';
 import logger from './logger';
 import { logAudit } from './authorization';
-
-// Cargar variables de entorno
-dotenv.config(); // Carga desde .env en Backend/
 
 const app = express();
 

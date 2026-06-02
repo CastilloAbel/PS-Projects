@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.join(__dirname, '../../.env') }); // Cargar desde raíz
+
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { prisma } from './prisma';

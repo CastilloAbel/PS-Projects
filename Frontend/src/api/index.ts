@@ -287,3 +287,27 @@ export const acceptInvitation = async (token: string, userId: string): Promise<a
   const { data } = await api.post(`/invitations/${token}/accept`, { userId });
   return data;
 };
+
+export const sendBoardInvitation = async (
+  boardId: string,
+  email: string,
+  role: string
+): Promise<any> => {
+  const { data } = await api.post(`/boards/${boardId}/invitations`, {
+    email,
+    role,
+  });
+  return data;
+};
+
+export const getBoardInvitations = async (boardId: string): Promise<any> => {
+  const { data } = await api.get(`/boards/${boardId}/invitations`);
+  return data;
+};
+
+export const cancelBoardInvitation = async (
+  boardId: string,
+  invitationId: string
+): Promise<void> => {
+  await api.delete(`/boards/${boardId}/invitations/${invitationId}`);
+};

@@ -7,6 +7,7 @@ import { AdvancedRoleManagement } from './AdvancedRoleManagement';
 import { CreateBoardModal } from './CreateBoardModal';
 import { useTheme } from '../context/ThemeContext';
 import { usePermission } from '../context/PermissionContext';
+import { useAuth } from '../context/AuthContext';
 import {
   addWorkspaceMember,
   getWorkspaceMembers,
@@ -40,12 +41,37 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { setBoardContext, setWorkspaceContext } = usePermission();
+  const { user: currentUser } = useAuth();
   const [workspace, setWorkspace] = useState<Workspace>(initialWorkspace);
   const [selectedBoard, setSelectedBoard] = useState<BoardType | null>(null);
   const [showRoleManagement, setShowRoleManagement] = useState<'board' | 'workspace' | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
+
+  // Helper para obtener el rol del usuario actual en workspace
+  const getCurrentUserWorkspaceRole = () => {
+    if (!currentUser || !workspace.members || !Array.isArray(workspace.members)) return null;
+    const currentMember = workspace.members.find(m => m.userId === currentUser.id);
+    return currentMember?.role as any || null;
+  };
+
+  // Helper para obtener el rol del usuario actual en board
+  const getCurrentUserBoardRole = () => {
+    if (!currentUser || !selectedBoard?.members || !Array.isArray(selectedBoard.members)) return null;
+    const currentMember = selectedBoard.members.find(m => m.userId === currentUser.id);
+    return currentMember?.role as any || null;
+  };
+
+  // Helper para verificar si usuario actual es owner del workspace
+  const isCurrentUserWorkspaceOwner = () => {
+    return workspace.ownerId === currentUser?.id;
+  };
+
+  // Helper para verificar si usuario actual es owner del board
+  const isCurrentUserBoardOwner = () => {
+    return selectedBoard?.ownerId === currentUser?.id;
+  };
 
   // Update workspace when prop changes
   useEffect(() => {
@@ -345,9 +371,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       {showRoleManagement === 'workspace' && (
         <AdvancedRoleManagement
           type="workspace"
+          resourceId={workspace.id}
           members={(workspace.members || []) as WorkspaceMember[]}
-          currentUserRole={workspace.members?.[0]?.role as any}
-          isOwner={workspace.ownerId === workspace.members?.[0]?.userId}
+          currentUserRole={getCurrentUserWorkspaceRole()}
+          isOwner={isCurrentUserWorkspaceOwner()}
           onAddMember={handleAddWorkspaceMember}
           onUpdateRole={handleUpdateWorkspaceMemberRole}
           onRemoveMember={handleRemoveWorkspaceMember}
@@ -358,9 +385,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       {showRoleManagement === 'board' && selectedBoard && (
         <AdvancedRoleManagement
           type="board"
+          resourceId={selectedBoard.id}
           members={(selectedBoard.members || []) as BoardMember[]}
-          currentUserRole={selectedBoard.members?.[0]?.role as any}
-          isOwner={selectedBoard.ownerId === selectedBoard.members?.[0]?.userId}
+          currentUserRole={getCurrentUserBoardRole()}
+          isOwner={isCurrentUserBoardOwner()}
           onAddMember={handleAddBoardMember}
           onUpdateRole={handleUpdateBoardMemberRole}
           onRemoveMember={handleRemoveBoardMember}

@@ -350,14 +350,14 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
             </div>
           )}
 
-          {/* Members List */}
-          <div>
-            <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-3 flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Current Members ({members.length})
-            </h3>
-            <div className="space-y-2">
-              {members.map((member) => {
+           {/* Members List */}
+           <div>
+             <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-3 flex items-center gap-2">
+               <User className="w-4 h-4" />
+               Current Members ({Array.isArray(members) ? members.length : 0})
+             </h3>
+             <div className="space-y-2">
+               {Array.isArray(members) && members.map((member) => {
                 const isEditing = editingId === member.id;
                 const memberUser = member.user as any;
                 const memberRole = member.role as BoardRole | WorkspaceRole;
@@ -448,19 +448,19 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
                     )}
                   </div>
                 );
-              })}
+               })}
 
-              {members.length === 0 && (
-                <div className="text-center py-8 text-surface-500 dark:text-surface-400">
-                  <p>No members yet. Add one to get started!</p>
-                </div>
-              )}
-            </div>
-          </div>
+               {(!Array.isArray(members) || members.length === 0) && (
+                 <div className="text-center py-8 text-surface-500 dark:text-surface-400">
+                   <p>No members yet. Add one to get started!</p>
+                 </div>
+               )}
+             </div>
+           </div>
         </div>
       </div>
 
-      {/* Invite Modal */}
+      {/* Invite Modal - Renderizar fuera del contenedor principal para mejor z-index */}
       {showInviteModal && (
         <InviteModal
           isOpen={showInviteModal}

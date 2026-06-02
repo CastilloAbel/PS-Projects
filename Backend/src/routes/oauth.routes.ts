@@ -32,17 +32,27 @@ router.get(
       const profile = (req as any).user;
 
       if (!profile || !profile.token) {
-        res.redirect('/login?error=auth_failed');
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=auth_failed`);
         return;
       }
 
-      // Redirigir al frontend con el token en el query string
-      // El frontend lo extraerá y lo guardará en la cookie
+      // Obtener datos del usuario
+      const { user, token } = profile;
+
+      // Configurar cookie httpOnly con el token JWT
+      res.cookie('authToken', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+      });
+
+      // Redirigir al frontend - el token está en la cookie, no en el URL
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      res.redirect(`${frontendUrl}/auth/callback?token=${profile.token}&userId=${profile.user.id}`);
+      res.redirect(`${frontendUrl}/auth/callback?userId=${user.id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`);
     } catch (error) {
       console.error('Error in Google callback:', error);
-      res.redirect('/login?error=callback_error');
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=callback_error`);
     }
   }
 );

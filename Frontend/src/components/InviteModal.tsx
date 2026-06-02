@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Send, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { sendWorkspaceInvitation, sendBoardInvitation } from '../api';
 
 export interface InviteModalProps {
   isOpen: boolean;
@@ -101,26 +102,12 @@ export const InviteModal: React.FC<InviteModalProps> = ({
     setLoading(true);
 
     try {
-      const endpoint = type === 'workspace'
-        ? `/workspaces/${workspaceId}/invitations`
-        : `/boards/${boardId}/invitations`;
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}${endpoint}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.toLowerCase(),
-          role: formData.role,
-        }),
-      });
-
-      const data: InvitationResponse = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send invitation');
+      if (type === 'workspace' && workspaceId) {
+        await sendWorkspaceInvitation(workspaceId, formData.email.toLowerCase(), formData.role);
+      } else if (type === 'board' && boardId) {
+        await sendBoardInvitation(boardId, formData.email.toLowerCase(), formData.role);
+      } else {
+        throw new Error('Invalid invitation type or missing resource ID');
       }
 
       setSuccess(`Invitation sent to ${formData.email}`);
@@ -146,7 +133,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className={`rounded-lg shadow-lg max-w-md w-full ${theme === 'dark' ? 'bg-surface-900 border-surface-700' : 'bg-white border-surface-200'} border`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-inherit">

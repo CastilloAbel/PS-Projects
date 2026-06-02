@@ -15,8 +15,9 @@ export const AuthCallbackPage: React.FC<{ onSuccess: () => void }> = ({ onSucces
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
         const userId = params.get('userId');
+        const email = params.get('email');
+        const name = params.get('name');
         const error = params.get('error');
 
         if (error) {
@@ -25,20 +26,20 @@ export const AuthCallbackPage: React.FC<{ onSuccess: () => void }> = ({ onSucces
           return;
         }
 
-        if (!token || !userId) {
+        if (!userId || !email) {
           showError('Datos de autenticación incompletos');
           window.location.href = '/login';
           return;
         }
 
-        // Configurar la cookie con el token
-        document.cookie = `authToken=${token}; path=/; SameSite=Strict`;
+        // El token ya está en la cookie httpOnly (configurado por el backend)
+        // No necesitamos manejarlo manualmente
 
-        // Simular usuario basado en userId
+        // Configurar el contexto de autenticación con los datos reales del usuario
         const userData = {
           id: userId,
-          email: 'user@google.com',
-          name: 'Google User',
+          email: email,
+          name: name || 'User',
           avatarUrl: undefined
         };
 
