@@ -32,6 +32,8 @@ function AppContent() {
       setCurrentView('callback');
     } else if (window.location.pathname.startsWith('/accept-invitation/')) {
       setCurrentView('invitation');
+    } else if (window.location.pathname.startsWith('/workspaces/')) {
+      setCurrentView('workspace');
     }
   }, []);
 
@@ -57,9 +59,15 @@ function AppContent() {
         }));
         setWorkspaces(sanitizedWs);
         
-        // Auto-select first workspace if available
-        if (sanitizedWs.length > 0) {
-          setSelectedWorkspace(sanitizedWs[0]);
+        // Check if path has a workspace ID
+        const match = window.location.pathname.match(/^\/workspaces\/([^/]+)/);
+        const urlWorkspaceId = match ? match[1] : null;
+        
+        const targetWorkspace = sanitizedWs.find(w => w.id === urlWorkspaceId) || sanitizedWs[0];
+        
+        // Auto-select workspace if available
+        if (targetWorkspace) {
+          setSelectedWorkspace(targetWorkspace);
           setCurrentView('workspace');
         } else {
           setCurrentView('home');

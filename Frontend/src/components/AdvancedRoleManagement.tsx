@@ -149,7 +149,6 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
         const { sendWorkspaceInvitation } = await import('../api');
         await sendWorkspaceInvitation(resourceId!, memberUser.email, member.role);
       }
-      alert('Invitation email sent successfully!');
     } catch (err: any) {
       setError(err?.response?.data?.error || (err instanceof Error ? err.message : 'Failed to send invitation'));
     } finally {
@@ -380,14 +379,14 @@ export const AdvancedRoleManagement: React.FC<AdvancedRoleManagementProps> = ({
                Current Members ({Array.isArray(members) ? members.length : 0})
              </h3>
              <div className="space-y-2">
-               {Array.isArray(members) && members.map((member) => {
+               {Array.isArray(members) && members.map((member, idx) => {
                 const isEditing = editingId === member.id;
                 const memberUser = member.user as any;
                 const memberRole = member.role as BoardRole | WorkspaceRole;
 
                 return (
                   <div
-                    key={member.id}
+                    key={member.id || `member-${idx}`}
                     className="p-4 bg-surface-100 dark:bg-surface-800 rounded-lg flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">

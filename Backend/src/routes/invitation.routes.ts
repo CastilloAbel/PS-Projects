@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { verifyJWT } from '../middleware';
-import { isWorkspaceOwner, isWorkspaceAdmin, logAudit } from '../authorization';
+import { isWorkspaceOwner, isWorkspaceAdmin, canUserDoInBoard, logAudit } from '../authorization';
 import { prisma } from '../prisma';
 import logger from '../logger';
 import { generateInvitationToken, getInvitationExpiryDate, generateInvitationLink } from '../utils/invitationUtils';
@@ -56,21 +56,6 @@ router.post(
         where: { email },
       });
 
-      if (existingUser) {
-        const existingMember = await prisma.workspaceMember.findUnique({
-          where: {
-            userId_workspaceId: {
-              userId: existingUser.id,
-              workspaceId,
-            },
-          },
-        });
-
-        if (existingMember) {
-          return res.status(400).json({ error: 'User is already a workspace member' });
-        }
-      }
-
       // Check if invitation already exists
       const existingInvitation = await prisma.workspaceInvitation.findFirst({
         where: {
@@ -81,7 +66,10 @@ router.post(
       });
 
       if (existingInvitation) {
-        return res.status(400).json({ error: 'Pending invitation already exists for this email' });
+        // Delete the existing pending invitation so we can create a new one with a fresh token
+        await prisma.workspaceInvitation.delete({
+          where: { id: existingInvitation.id }
+        });
       }
 
       // Generate invitation token and create invitation
@@ -259,5 +247,268 @@ router.delete(
  * POST /invitations/:token/accept - Accept invitation (PUBLIC)
  * Este endpoint está definido en index.ts como ruta pública
  */
+
+// ============================================================================
+// BOARD INVITATIONS
+// ============================================================================
+
+/**
+ * POST /boards/:boardId/invitations - Send board invitation
+ * Requires: MANAGE_MEMBERS permission on the board
+ */
+router.post(
+  '/boards/:boardId/invitations',
+  verifyJWT,
+  async (req: Request, res: Response) => {
+    try {
+      const boardId = getParam(req.params.boardId);
+      const { email, role = 'VIEWER' } = req.body as any;
+      const requesterId = req.userId as string;
+
+      // Validate inputs
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ error: 'Valid email is required' });
+      }
+
+      const validRoles = ['OWNER', 'ADMIN', 'EDITOR', 'COMMENTER', 'VIEWER'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: 'Invalid board role' });
+      }
+
+      // Verify board exists
+      const board = await prisma.board.findUnique({
+        where: { id: boardId },
+        include: { workspace: true }
+      });
+
+      if (!board) {
+        logger.warn(`Board not found: ${boardId}`, { userId: requesterId });
+        return res.status(404).json({ error: 'Board not found' });
+      }
+
+      // Verify requester has permission to manage members in the board
+      const hasPermission = await canUserDoInBoard(requesterId, boardId, 'MANAGE_MEMBERS');
+      if (!hasPermission && board.ownerId !== requesterId) {
+        logger.warn(`User ${requesterId} tried to invite to board ${boardId} without permission`);
+        return res.status(403).json({ error: 'No tienes permiso para gestionar miembros en este tablero' });
+      }
+
+      // Check if email is already a member of the board
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      // Check if invitation already exists
+      const existingInvitation = await prisma.boardInvitation.findFirst({
+        where: {
+          email,
+          boardId,
+          status: 'PENDING',
+        },
+      });
+
+      if (existingInvitation) {
+        // Delete the existing pending invitation so we can create a new one with a fresh token
+        await prisma.boardInvitation.delete({
+          where: { id: existingInvitation.id }
+        });
+      }
+
+      // Generate invitation token and create invitation
+      const token = generateInvitationToken();
+      const expiresAt = getInvitationExpiryDate(7);
+
+      const invitation = await prisma.boardInvitation.create({
+        data: {
+          email,
+          role: role as any,
+          token,
+          expiresAt,
+          boardId,
+          invitedBy: requesterId,
+        },
+        include: {
+          board: {
+            include: {
+              workspace: true
+            }
+          },
+          invitedByUser: true,
+        },
+      });
+
+      // Get requester info for email
+      const requester = await prisma.user.findUnique({
+        where: { id: requesterId },
+      });
+
+      // Send invitation email
+      const invitationLink = generateInvitationLink(token);
+      await sendBoardInvitationEmail(
+        email,
+        board.name,
+        board.workspace.name,
+        requester?.name || 'Someone',
+        invitationLink
+      );
+
+      // Log audit
+      await logAudit(
+        requesterId,
+        'SEND_BOARD_INVITATION',
+        'BoardInvitation',
+        invitation.id,
+        {
+          email,
+          boardId,
+          role,
+          expiresAt,
+        },
+        req
+      );
+
+      logger.info(`Board invitation sent to ${email} for board ${boardId}`, {
+        userId: requesterId,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          expiresAt: invitation.expiresAt,
+          status: invitation.status,
+        },
+      });
+    } catch (error) {
+      logger.error('Error sending board invitation', { error, userId: req.userId });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
+ * GET /boards/:boardId/invitations - List pending invitations for board
+ * Requires: VIEW permission on the board
+ */
+router.get(
+  '/boards/:boardId/invitations',
+  verifyJWT,
+  async (req: Request, res: Response) => {
+    try {
+      const boardId = getParam(req.params.boardId);
+      const requesterId = req.userId as string;
+
+      // Verify board exists
+      const board = await prisma.board.findUnique({
+        where: { id: boardId },
+      });
+
+      if (!board) {
+        logger.warn(`Board not found: ${boardId}`, { userId: requesterId });
+        return res.status(404).json({ error: 'Board not found' });
+      }
+
+      // Verify requester has access to board
+      const hasPermission = await canUserDoInBoard(requesterId, boardId, 'VIEW');
+      if (!hasPermission && board.ownerId !== requesterId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const invitations = await prisma.boardInvitation.findMany({
+        where: { boardId },
+        include: {
+          invitedByUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({
+        success: true,
+        data: invitations,
+      });
+    } catch (error) {
+      logger.error('Error listing board invitations', { error, userId: req.userId });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
+ * DELETE /boards/:boardId/invitations/:invitationId - Cancel board invitation
+ * Requires: MANAGE_MEMBERS permission on the board
+ */
+router.delete(
+  '/boards/:boardId/invitations/:invitationId',
+  verifyJWT,
+  async (req: Request, res: Response) => {
+    try {
+      const boardId = getParam(req.params.boardId);
+      const invitationId = getParam(req.params.invitationId);
+      const requesterId = req.userId as string;
+
+      // Verify board exists
+      const board = await prisma.board.findUnique({
+        where: { id: boardId },
+      });
+
+      if (!board) {
+        return res.status(404).json({ error: 'Board not found' });
+      }
+
+      // Verify requester has permission to manage members
+      const hasPermission = await canUserDoInBoard(requesterId, boardId, 'MANAGE_MEMBERS');
+      if (!hasPermission && board.ownerId !== requesterId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Verify invitation exists and belongs to board
+      const invitation = await prisma.boardInvitation.findUnique({
+        where: { id: invitationId },
+      });
+
+      if (!invitation || invitation.boardId !== boardId) {
+        return res.status(404).json({ error: 'Invitation not found' });
+      }
+
+      // Delete invitation
+      await prisma.boardInvitation.delete({
+        where: { id: invitationId },
+      });
+
+      // Log audit
+      await logAudit(
+        requesterId,
+        'CANCEL_BOARD_INVITATION',
+        'BoardInvitation',
+        invitationId,
+        {
+          email: invitation.email,
+          boardId,
+        },
+        req
+      );
+
+      logger.info(`Board invitation cancelled: ${invitationId}`, {
+        userId: requesterId,
+      });
+
+      res.json({
+        success: true,
+        message: 'Invitation cancelled',
+      });
+    } catch (error) {
+      logger.error('Error cancelling board invitation', { error, userId: req.userId });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
 
 export default router;

@@ -85,26 +85,30 @@ app.post('/invitations/:token/accept', async (req: any, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    // Find invitation
-    const invitation = await prisma.workspaceInvitation.findUnique({
+    // Find invitation (could be workspace or board)
+    let invitation = await prisma.workspaceInvitation.findUnique({
       where: { token },
       include: {
         workspace: true,
       },
     });
 
+    let boardInvitation = null;
     if (!invitation) {
+      boardInvitation = await prisma.boardInvitation.findUnique({
+        where: { token },
+        include: {
+          board: {
+            include: {
+              workspace: true,
+            },
+          },
+        },
+      });
+    }
+
+    if (!invitation && !boardInvitation) {
       return res.status(404).json({ error: 'Invitation not found' });
-    }
-
-    // Check if expired
-    if (new Date() > invitation.expiresAt) {
-      return res.status(410).json({ error: 'Invitation has expired' });
-    }
-
-    // Check if already accepted
-    if (invitation.status !== 'PENDING') {
-      return res.status(400).json({ error: `Invitation already ${invitation.status.toLowerCase()}` });
     }
 
     // Verify user exists
@@ -116,68 +120,183 @@ app.post('/invitations/:token/accept', async (req: any, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if user email matches invitation email
-    if (user.email !== invitation.email) {
-      return res.status(403).json({ error: 'User email does not match invitation' });
-    }
+    if (invitation) {
+      // Check if expired
+      if (new Date() > invitation.expiresAt) {
+        return res.status(410).json({ error: 'Invitation has expired' });
+      }
 
-    // Check if already a member
-    const existingMember = await prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
+      // Check if already accepted
+      if (invitation.status !== 'PENDING') {
+        return res.status(400).json({ error: `Invitation already ${invitation.status.toLowerCase()}` });
+      }
+
+      // Check if user email matches invitation email
+      if (user.email !== invitation.email) {
+        return res.status(403).json({ error: 'User email does not match invitation' });
+      }
+
+      // Check if already a member
+      const existingMember = await prisma.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: invitation.workspaceId,
+          },
+        },
+      });
+
+      if (existingMember) {
+        return res.status(400).json({ error: 'User is already a workspace member' });
+      }
+
+      // Add user to workspace
+      const member = await prisma.workspaceMember.create({
+        data: {
           userId,
           workspaceId: invitation.workspaceId,
+          role: invitation.role,
         },
-      },
-    });
+        include: {
+          user: true,
+        },
+      });
 
-    if (existingMember) {
-      return res.status(400).json({ error: 'User is already a workspace member' });
-    }
+      // Mark invitation as accepted
+      await prisma.workspaceInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: 'ACCEPTED',
+          acceptedAt: new Date(),
+        },
+      });
 
-    // Add user to workspace
-    const member = await prisma.workspaceMember.create({
-      data: {
+      // Log audit
+      await logAudit(
         userId,
-        workspaceId: invitation.workspaceId,
-        role: invitation.role,
-      },
-      include: {
-        user: true,
-      },
-    });
+        'ACCEPT_WORKSPACE_INVITATION',
+        'WorkspaceInvitation',
+        invitation.id,
+        {
+          workspaceId: invitation.workspaceId,
+          role: invitation.role,
+        },
+        req
+      );
 
-    // Mark invitation as accepted
-    await prisma.workspaceInvitation.update({
-      where: { id: invitation.id },
-      data: {
-        status: 'ACCEPTED',
-        acceptedAt: new Date(),
-      },
-    });
+      logger.info(`Workspace invitation accepted by ${userId} for workspace ${invitation.workspaceId}`, {
+        userId,
+      });
 
-    // Log audit
-    await logAudit(
-      userId,
-      'ACCEPT_WORKSPACE_INVITATION',
-      'WorkspaceInvitation',
-      invitation.id,
-      {
-        workspaceId: invitation.workspaceId,
-        role: invitation.role,
-      },
-      req
-    );
+      return res.json({
+        success: true,
+        message: 'Invitation accepted',
+        data: {
+          ...member,
+          workspace: invitation.workspace,
+          workspaceId: invitation.workspaceId,
+        },
+      });
+    } else {
+      // Board invitation
+      // Check if expired
+      if (new Date() > boardInvitation!.expiresAt) {
+        return res.status(410).json({ error: 'Invitation has expired' });
+      }
 
-    logger.info(`Workspace invitation accepted by ${userId} for workspace ${invitation.workspaceId}`, {
-      userId,
-    });
+      // Check if already accepted
+      if (boardInvitation!.status !== 'PENDING') {
+        return res.status(400).json({ error: `Invitation already ${boardInvitation!.status.toLowerCase()}` });
+      }
 
-    res.json({
-      success: true,
-      message: 'Invitation accepted',
-      data: member,
-    });
+      // Check if user email matches invitation email
+      if (user.email !== boardInvitation!.email) {
+        return res.status(403).json({ error: 'User email does not match invitation' });
+      }
+
+      // Check if already a member of the board
+      const existingMember = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: boardInvitation!.boardId,
+          },
+        },
+      });
+
+      if (existingMember) {
+        return res.status(400).json({ error: 'User is already a board member' });
+      }
+
+      // Check if user is member of workspace, if not, add them automatically as MEMBER
+      const workspaceMembership = await prisma.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: boardInvitation!.board.workspaceId,
+          },
+        },
+      });
+
+      if (!workspaceMembership) {
+        await prisma.workspaceMember.create({
+          data: {
+            userId,
+            workspaceId: boardInvitation!.board.workspaceId,
+            role: 'MEMBER',
+          },
+        });
+        logger.info(`User ${userId} auto-added to workspace ${boardInvitation!.board.workspaceId} (accepting board invitation)`);
+      }
+
+      // Add user to board
+      const member = await prisma.boardMember.create({
+        data: {
+          userId,
+          boardId: boardInvitation!.boardId,
+          role: boardInvitation!.role,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      // Mark invitation as accepted
+      await prisma.boardInvitation.update({
+        where: { id: boardInvitation!.id },
+        data: {
+          status: 'ACCEPTED',
+          acceptedAt: new Date(),
+        },
+      });
+
+      // Log audit
+      await logAudit(
+        userId,
+        'ACCEPT_BOARD_INVITATION',
+        'BoardInvitation',
+        boardInvitation!.id,
+        {
+          boardId: boardInvitation!.boardId,
+          role: boardInvitation!.role,
+        },
+        req
+      );
+
+      logger.info(`Board invitation accepted by ${userId} for board ${boardInvitation!.boardId}`, {
+        userId,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Invitation accepted',
+        data: {
+          ...member,
+          board: boardInvitation!.board,
+          workspaceId: boardInvitation!.board.workspaceId,
+        },
+      });
+    }
   } catch (error) {
     logger.error('Error accepting invitation', { error });
     res.status(500).json({ error: 'Internal server error' });

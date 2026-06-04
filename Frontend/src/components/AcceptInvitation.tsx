@@ -65,7 +65,9 @@ export const AcceptInvitation: React.FC = () => {
       setState(prev => ({
         ...prev,
         success: true,
-        workspaceName: data.data?.workspace?.name || 'Workspace',
+        workspaceName: data.data?.board?.name 
+          ? `board "${data.data.board.name}"` 
+          : (data.data?.workspace?.name || 'Workspace'),
       }));
 
       // Redirect to workspace after 2 seconds
