@@ -40,6 +40,13 @@ function AppContent() {
   // Load workspaces when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
+      if (
+        window.location.pathname === '/auth/callback' ||
+        window.location.pathname.startsWith('/accept-invitation/')
+      ) {
+        setLoading(false);
+        return;
+      }
       setCurrentView('login');
       setLoading(false);
       return;
