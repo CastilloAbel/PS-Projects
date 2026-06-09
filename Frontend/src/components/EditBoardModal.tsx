@@ -1,29 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import type { WorkspaceMember } from '../types';
+import type { Board } from '../types';
 
-interface CreateBoardModalProps {
+interface EditBoardModalProps {
   isOpen: boolean;
   isLoading: boolean;
-  workspaceName: string;
-  workspaceMembers?: WorkspaceMember[];
-  onSubmit: (
-    name: string,
-    background?: string,
-    type?: string,
-    status?: string,
-    startDate?: string | null,
-    members?: string[]
-  ) => Promise<void>;
+  board: Board;
+  onSubmit: (updates: Partial<Board>) => Promise<void>;
   onClose: () => void;
 }
 
-export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
+export const EditBoardModal: React.FC<EditBoardModalProps> = ({
   isOpen,
   isLoading,
-  workspaceName,
-  workspaceMembers = [],
+  board,
   onSubmit,
   onClose,
 }) => {
@@ -33,8 +24,17 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [type, setType] = useState('KANBAN');
   const [status, setStatus] = useState('CREADO');
   const [startDate, setStartDate] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (board) {
+      setName(board.name);
+      setBackground(board.background || '');
+      setType(board.type || 'KANBAN');
+      setStatus(board.status || 'CREADO');
+      setStartDate(board.startDate ? board.startDate.split('T')[0] : '');
+    }
+  }, [board, isOpen]);
 
   const backgroundOptions = [
     { label: 'Blue', value: '#3B82F6' },
@@ -47,17 +47,6 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     { label: 'Gray', value: '#6B7280' },
   ];
 
-  const handleClose = () => {
-    setName('');
-    setBackground('');
-    setType('KANBAN');
-    setStatus('CREADO');
-    setStartDate('');
-    setSelectedMembers([]);
-    setError(null);
-    onClose();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -68,22 +57,15 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     }
 
     try {
-      await onSubmit(
+      await onSubmit({
         name,
-        background || undefined,
-        type,
-        status,
-        startDate ? startDate : null,
-        selectedMembers
-      );
-      setName('');
-      setBackground('');
-      setType('KANBAN');
-      setStatus('CREADO');
-      setStartDate('');
-      setSelectedMembers([]);
+        background: background || null,
+        type: type as any,
+        status: status as any,
+        startDate: startDate ? startDate : null,
+      });
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.error || 'Error al crear el board';
+      const errorMessage = err?.response?.data?.error || 'Error al actualizar el board';
       setError(errorMessage);
     }
   };
@@ -102,18 +84,15 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       <div className={`rounded-lg shadow-lg p-6 w-full max-w-md border max-h-[90vh] overflow-y-auto ${bgClass} ${theme === 'dark' ? 'border-surface-700' : 'border-surface-200'}`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className={`text-xl font-bold ${textClass}`}>Crear Board</h2>
+          <h2 className={`text-xl font-bold ${textClass}`}>Editar Board</h2>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             disabled={isLoading}
             className="p-1 hover:bg-surface-200 dark:hover:bg-surface-700 rounded-lg transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Workspace Info */}
-        <p className={`text-sm mb-4 ${labelClass}`}>En: <span className="font-semibold">{workspaceName}</span></p>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -211,47 +190,11 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
             </div>
           </div>
 
-          {/* Workspace Members Checklist */}
-          {workspaceMembers.length > 0 && (
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                Miembros del Proyecto
-              </label>
-              <div className={`border rounded-lg p-3 max-h-36 overflow-y-auto space-y-2 ${theme === 'dark' ? 'border-surface-700 bg-surface-800' : 'border-surface-200 bg-surface-50'}`}>
-                {workspaceMembers.map((member) => {
-                  const u = member.user;
-                  if (!u) return null;
-                  const isSelected = selectedMembers.includes(u.id);
-                  return (
-                    <label key={member.id} className="flex items-center gap-3 cursor-pointer text-sm">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          if (isSelected) {
-                            setSelectedMembers(selectedMembers.filter((id) => id !== u.id));
-                          } else {
-                            setSelectedMembers([...selectedMembers, u.id]);
-                          }
-                        }}
-                        disabled={isLoading}
-                        className="rounded text-primary-500 focus:ring-primary-500 h-4 w-4 bg-surface-900 border-surface-700"
-                      />
-                      <span className={textClass}>
-                        {u.name} <span className="text-xs text-surface-400">({u.email})</span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={onClose}
               disabled={isLoading}
               className="flex-1 px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-700 dark:text-surface-300 transition-colors disabled:opacity-50"
             >
@@ -263,7 +206,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
               className="flex-1 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isLoading ? 'Creando...' : 'Crear'}
+              {isLoading ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
         </form>

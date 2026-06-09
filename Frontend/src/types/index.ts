@@ -95,6 +95,9 @@ export interface List {
   cards: Card[];
 }
 
+export type BoardType = 'KANBAN' | 'GANTT';
+export type BoardStatus = 'CREADO' | 'EN_DESARROLLO' | 'FINALIZADO';
+
 export interface Board {
   id: string;
   name: string;
@@ -103,6 +106,9 @@ export interface Board {
   ownerId?: string;
   lists: List[];
   members?: BoardMember[];
+  type?: BoardType;
+  status?: BoardStatus;
+  startDate?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

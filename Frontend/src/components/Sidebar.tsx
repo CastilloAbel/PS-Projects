@@ -9,12 +9,14 @@ import {
   Plus,
   FolderOpen,
 } from 'lucide-react';
-import type { Workspace } from '../types';
+import type { Workspace, Board } from '../types';
 
 interface SidebarProps {
   workspaces: Workspace[];
   currentWorkspace: Workspace | null;
+  currentBoard: Board | null;
   onWorkspaceSelect: (workspace: Workspace) => void;
+  onBoardSelect: (board: Board) => void;
   onCreateWorkspace: () => void;
   onCreateBoard: () => void;
   onLogout: () => void;
@@ -24,7 +26,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   workspaces,
   currentWorkspace,
+  currentBoard,
   onWorkspaceSelect,
+  onBoardSelect,
   onCreateWorkspace,
   onCreateBoard,
   onLogout,
@@ -148,7 +152,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   currentWorkspace.boards.map((board) => (
                     <button
                       key={board.id}
-                      className="w-full text-left px-4 py-2 rounded text-sm text-surface-400 hover:text-surface-50 hover:bg-surface-800 transition-colors truncate"
+                      onClick={() => {
+                        onBoardSelect(board);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded text-sm transition-colors truncate ${
+                        currentBoard?.id === board.id
+                          ? 'bg-primary-500 text-white'
+                          : 'text-surface-400 hover:text-surface-50 hover:bg-surface-800'
+                      }`}
                     >
                       {board.name}
                     </button>

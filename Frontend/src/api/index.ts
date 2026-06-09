@@ -39,8 +39,24 @@ export const getBoard = async (boardId: string): Promise<Board> => {
   return data;
 };
 
-export const createBoard = async (name: string, workspaceId: string, background?: string): Promise<Board> => {
-  const { data } = await api.post('/boards', { name, workspaceId, background });
+export const createBoard = async (
+  name: string,
+  workspaceId: string,
+  background?: string,
+  type?: string,
+  status?: string,
+  startDate?: string | null,
+  members?: string[]
+): Promise<Board> => {
+  const { data } = await api.post('/boards', {
+    name,
+    workspaceId,
+    background,
+    type,
+    status,
+    startDate,
+    members,
+  });
   return data;
 };
 

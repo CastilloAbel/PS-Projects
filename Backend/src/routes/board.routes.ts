@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../prisma';
 import logger from '../logger';
 import { canUserDoInBoard, logAudit } from '../authorization';
+import { BoardRole } from '@prisma/client';
 
 const router = Router();
 
@@ -138,7 +139,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 // POST /boards - Crear un nuevo tablero
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, background, workspaceId } = req.body;
+    const { name, background, workspaceId, type = 'KANBAN', status = 'CREADO', startDate, members } = req.body;
     const userId = (req as any).userId;
 
     if (!name || !workspaceId) {
@@ -159,25 +160,41 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const otherMembers = Array.isArray(members) ? members.filter((mId: string) => mId !== userId) : [];
+
     const board = await prisma.board.create({
       data: {
         name,
         background,
         workspaceId,
         ownerId: userId,
+        type,
+        status,
+        startDate: startDate ? new Date(startDate) : null,
         members: {
-          create: {
-            userId,
-            role: 'OWNER'
-          }
+          create: [
+            { userId, role: BoardRole.OWNER },
+            ...otherMembers.map((mId: string) => ({ userId: mId, role: BoardRole.VIEWER }))
+          ]
         }
       },
       include: {
-        members: true
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true
+              }
+            }
+          }
+        }
       }
     });
 
-    await logAudit('CREATE', 'BOARD', board.id, userId, { name, workspaceId });
+    await logAudit('CREATE', 'BOARD', board.id, userId, { name, workspaceId, type, status, startDate });
     logger.info(`User ${userId} created board ${board.id}`);
 
     res.status(201).json(board);
@@ -192,7 +209,7 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const boardId = req.params.id as string;
     const userId = (req as any).userId;
-    const { name, background } = req.body;
+    const { name, background, type, status, startDate } = req.body;
 
     // Verificar que es owner o admin
     const board = await prisma.board.findUnique({
@@ -215,11 +232,14 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
       where: { id: boardId },
       data: {
         ...(name && { name }),
-        ...(background !== undefined && { background })
+        ...(background !== undefined && { background }),
+        ...(type && { type }),
+        ...(status && { status }),
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null })
       }
     });
 
-    await logAudit('UPDATE', 'BOARD', boardId, userId, { name, background });
+    await logAudit('UPDATE', 'BOARD', boardId, userId, { name, background, type, status, startDate });
     logger.info(`User ${userId} updated board ${boardId}`);
 
     res.json(updatedBoard);

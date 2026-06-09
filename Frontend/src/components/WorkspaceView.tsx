@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { Board } from './Board';
 import { AdvancedRoleManagement } from './AdvancedRoleManagement';
 import { CreateBoardModal } from './CreateBoardModal';
+import { EditBoardModal } from './EditBoardModal';
 import { useTheme } from '../context/ThemeContext';
 import { usePermission } from '../context/PermissionContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +20,7 @@ import {
   removeBoardMember,
   getBoard,
   createBoard,
+  updateBoard,
 } from '../api';
 import type { Workspace, Board as BoardType, BoardMember, WorkspaceMember } from '../types';
 
@@ -48,6 +50,26 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
+  const [showEditBoardModal, setShowEditBoardModal] = useState(false);
+  const [updatingBoard, setUpdatingBoard] = useState(false);
+
+  // Fetch workspace members automatically when workspace changes
+  useEffect(() => {
+    const loadMembers = async () => {
+      try {
+        const members = await getWorkspaceMembers(workspace.id);
+        setWorkspace((prev) => ({
+          ...prev,
+          members: members as WorkspaceMember[],
+        }));
+      } catch (error) {
+        console.error('Error loading workspace members:', error);
+      }
+    };
+    if (workspace?.id) {
+      loadMembers();
+    }
+  }, [workspace.id]);
 
   // Helper para obtener el rol del usuario actual en workspace
   const getCurrentUserWorkspaceRole = () => {
@@ -228,11 +250,26 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     setShowCreateBoardModal(true);
   };
 
-  const handleSubmitCreateBoard = async (name: string, background?: string) => {
+  const handleSubmitCreateBoard = async (
+    name: string,
+    background?: string,
+    type?: string,
+    status?: string,
+    startDate?: string | null,
+    members?: string[]
+  ) => {
     setCreatingBoard(true);
     try {
-      const newBoard = await createBoard(name, workspace.id, background);
-      
+      const newBoard = await createBoard(
+        name,
+        workspace.id,
+        background,
+        type,
+        status,
+        startDate,
+        members
+      );
+
       // Ensure the new board has lists array
       const sanitizedBoard = {
         ...newBoard,
@@ -257,13 +294,39 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     }
   };
 
+  const handleSubmitEditBoard = async (updates: Partial<BoardType>) => {
+    if (!selectedBoard) return;
+    setUpdatingBoard(true);
+    try {
+      const updatedBoard = await updateBoard(selectedBoard.id, updates);
+
+      // Update selectedBoard state
+      setSelectedBoard((prev) => (prev ? { ...prev, ...updatedBoard } : null));
+
+      // Update workspace.boards state
+      setWorkspace((prev) => ({
+        ...prev,
+        boards: prev.boards?.map((b) => (b.id === selectedBoard.id ? { ...b, ...updatedBoard } : b)) || [],
+      }));
+
+      setShowEditBoardModal(false);
+    } catch (error) {
+      console.error('Error updating board:', error);
+      throw error;
+    } finally {
+      setUpdatingBoard(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950">
       {/* Sidebar */}
       <Sidebar
         workspaces={workspaces}
         currentWorkspace={workspace}
+        currentBoard={selectedBoard}
         onWorkspaceSelect={onWorkspaceSelect}
+        onBoardSelect={handleSelectBoard}
         onCreateWorkspace={onCreateWorkspace}
         onCreateBoard={handleCreateBoard}
         onLogout={onLogout}
@@ -288,10 +351,32 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
             <div className="h-full flex flex-col">
               {/* Board Top Bar */}
               <div className="bg-surface-100 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-                <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                  {selectedBoard.name}
-                </h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {selectedBoard.name}
+                  </h2>
+                  <span className={`text-xs px-2.5 py-0.5 font-semibold rounded-full ${
+                    selectedBoard.status === 'FINALIZADO'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                      : selectedBoard.status === 'EN_DESARROLLO'
+                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {selectedBoard.status === 'FINALIZADO'
+                      ? 'Finalizado'
+                      : selectedBoard.status === 'EN_DESARROLLO'
+                      ? 'En Desarrollo'
+                      : 'Creado'}
+                  </span>
+                </div>
+                <div className="flex gap-3 items-center">
+                  <button
+                    onClick={() => setShowEditBoardModal(true)}
+                    className="p-2 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 hover:text-surface-900 dark:hover:text-surface-100 rounded-lg transition-colors"
+                    title="Configuración del proyecto"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
                   <button
                     onClick={() => setShowRoleManagement('board')}
                     className="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 rounded-lg transition-colors"
@@ -313,6 +398,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
                   initialBoard={selectedBoard}
                   onBoardUpdate={() => {
                     // Handle board update
+                    if (selectedBoard) {
+                      handleSelectBoard(selectedBoard);
+                    }
                   }}
                 />
               </div>
@@ -335,21 +423,39 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
                 </div>
               ) : workspace.boards && workspace.boards.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {workspace.boards.map((board) => (
+                  {workspace.boards.map((b) => (
                     <button
-                      key={board.id}
-                      onClick={() => handleSelectBoard(board)}
+                      key={b.id}
+                      onClick={() => handleSelectBoard(b)}
                       className="p-6 bg-surface-100 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700 hover:border-primary-500 dark:hover:border-primary-500 transition-all hover:shadow-lg text-left group"
                     >
-                      <h3 className="text-lg font-bold text-surface-900 dark:text-surface-50 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors mb-2">
-                        {board.name}
-                      </h3>
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <h3 className="text-lg font-bold text-surface-900 dark:text-surface-50 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate flex-1">
+                          {b.name}
+                        </h3>
+                        <span className={`text-xs px-2 py-0.5 font-semibold rounded-full shrink-0 ${
+                          b.status === 'FINALIZADO'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : b.status === 'EN_DESARROLLO'
+                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                        }`}>
+                          {b.status === 'FINALIZADO'
+                            ? 'Finalizado'
+                            : b.status === 'EN_DESARROLLO'
+                            ? 'En Desarrollo'
+                            : 'Creado'}
+                        </span>
+                      </div>
                       <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">
-                        {board.lists?.length || 0} list{(board.lists?.length || 0) !== 1 ? 's' : ''}
+                        {b.lists?.length || 0} list{(b.lists?.length || 0) !== 1 ? 's' : ''}
                       </p>
                       <div className="flex gap-2">
                         <span className="text-xs px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100 rounded">
-                          {board.ownerId ? 'Owned' : 'Member'}
+                          {b.ownerId === currentUser?.id ? 'Owned' : 'Member'}
+                        </span>
+                        <span className="text-xs px-2 py-1 bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 rounded font-semibold">
+                          {b.type === 'GANTT' ? 'Gantt' : 'Kanban'}
                         </span>
                       </div>
                     </button>
@@ -402,8 +508,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
           isOpen={showCreateBoardModal}
           isLoading={creatingBoard}
           workspaceName={workspace.name}
+          workspaceMembers={workspace.members}
           onSubmit={handleSubmitCreateBoard}
           onClose={() => setShowCreateBoardModal(false)}
+        />
+      )}
+
+      {/* Edit Board Modal */}
+      {showEditBoardModal && selectedBoard && (
+        <EditBoardModal
+          isOpen={showEditBoardModal}
+          isLoading={updatingBoard}
+          board={selectedBoard}
+          onSubmit={handleSubmitEditBoard}
+          onClose={() => setShowEditBoardModal(false)}
         />
       )}
     </div>
