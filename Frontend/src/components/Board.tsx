@@ -22,6 +22,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useError } from '../context/ErrorContext';
 import { useUser } from '../context/UserContext';
 import { Plus, X } from 'lucide-react';
+import { GanttView } from './GanttView';
 
 interface BoardProps {
   initialBoard: BoardType;
@@ -333,63 +334,11 @@ export const Board: React.FC<BoardProps> = ({ initialBoard, onBoardUpdate }) => 
 
   if (board.type === 'GANTT') {
     return (
-      <div className={`flex flex-col h-full ${bgClass} p-6 sm:p-8 overflow-hidden items-center justify-center text-center transition-colors`}>
-        <div className="max-w-2xl w-full p-8 rounded-2xl bg-surface-950/60 dark:bg-surface-900/40 border border-primary-500/20 backdrop-blur-md shadow-xl flex flex-col items-center">
-          {/* Mock Gantt UI Graphics */}
-          <div className="w-full flex flex-col gap-3 mb-8 bg-surface-950 p-4 rounded-xl border border-surface-800 text-left font-mono text-xs text-surface-400 select-none">
-            <div className="flex justify-between border-b border-surface-800 pb-2 text-[10px] uppercase text-surface-500">
-              <span className="w-1/4">Tarea</span>
-              <span className="w-1/4">Junio 01 - 07</span>
-              <span className="w-1/4">Junio 08 - 14</span>
-              <span className="w-1/4">Junio 15 - 21</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-1/4 truncate text-surface-200">🚢 Diseño del Barco</span>
-              <div className="w-3/4 bg-surface-900 h-4 rounded overflow-hidden relative">
-                <div className="absolute left-[5%] w-[45%] h-full bg-gradient-to-r from-primary-600 to-primary-400 rounded-sm animate-pulse" />
-              </div>
-            </div>
-            <div className="flex items-center">
-              <span className="w-1/4 truncate text-surface-200">⚔️ Compilación de Armas</span>
-              <div className="w-3/4 bg-surface-900 h-4 rounded overflow-hidden relative">
-                <div className="absolute left-[35%] w-[35%] h-full bg-gradient-to-r from-primary-500 to-primary-300 rounded-sm animate-pulse delay-75" />
-              </div>
-            </div>
-            <div className="flex items-center">
-              <span className="w-1/4 truncate text-surface-200">🗺️ Mapa del Tesoro</span>
-              <div className="w-3/4 bg-surface-900 h-4 rounded overflow-hidden relative">
-                <div className="absolute left-[60%] w-[25%] h-full bg-gradient-to-r from-primary-700 to-primary-500 rounded-sm animate-pulse delay-150" />
-              </div>
-            </div>
-          </div>
-
-          {/* Heading */}
-          <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">
-            Diagrama de Gantt
-          </h2>
-          <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider bg-primary-500/10 text-primary-400 rounded-full border border-primary-500/20 mb-6">
-            En Desarrollo
-          </span>
-          <p className="text-surface-300 max-w-md text-base leading-relaxed mb-8">
-            El timón se está ajustando y los mapas se están trazando. Muy pronto podrás gestionar tus proyectos con cronogramas interactivos, dependencias de tareas e hitos claves.
-          </p>
-
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2 text-sm text-surface-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-400" />
-              Cronogramas
-            </div>
-            <div className="flex items-center gap-2 text-sm text-surface-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-500" />
-              Dependencias
-            </div>
-            <div className="flex items-center gap-2 text-sm text-surface-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-600" />
-              Hitos
-            </div>
-          </div>
-        </div>
-      </div>
+      <GanttView
+        board={board}
+        workspaceTags={workspaceTags}
+        onBoardUpdate={onBoardUpdate}
+      />
     );
   }
 
