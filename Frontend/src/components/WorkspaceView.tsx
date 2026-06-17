@@ -95,6 +95,14 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     return selectedBoard?.ownerId === currentUser?.id;
   };
 
+  // Helper para obtener el rol correcto del usuario actual en un tablero
+  const getBoardRoleForUser = (b: BoardType) => {
+    if (!currentUser) return null;
+    if (b.ownerId === currentUser.id) return 'OWNER';
+    const member = b.members?.find((m) => m.userId === currentUser.id);
+    return member?.role || null;
+  };
+
   // Update workspace when prop changes
   useEffect(() => {
     setWorkspace(initialWorkspace);
@@ -117,12 +125,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
         ...completeBoard,
         lists: completeBoard.lists || [],
       });
-      setBoardContext(completeBoard.id, (completeBoard.members?.[0]?.role as any) || null);
+      setBoardContext(completeBoard.id, (getBoardRoleForUser(completeBoard) as any) || null);
     } catch (error) {
       console.error('Error loading board:', error);
       // Fallback to the provided board data
       setSelectedBoard(board);
-      setBoardContext(board.id, (board.members?.[0]?.role as any) || null);
+      setBoardContext(board.id, (getBoardRoleForUser(board) as any) || null);
     } finally {
       setLoading(false);
     }
@@ -285,7 +293,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
       setShowCreateBoardModal(false);
       // Auto-select the new board
       setSelectedBoard(sanitizedBoard);
-      setBoardContext(sanitizedBoard.id, (sanitizedBoard.members?.[0]?.role as any) || null);
+      setBoardContext(sanitizedBoard.id, (getBoardRoleForUser(sanitizedBoard) as any) || null);
     } catch (error) {
       console.error('Error creating board:', error);
       throw error;

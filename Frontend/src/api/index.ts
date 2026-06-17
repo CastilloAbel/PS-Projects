@@ -72,8 +72,24 @@ export const createList = async (name: string, boardId: string, order: number, u
 };
 
 // =============== CARDS ===============
-export const createCard = async (title: string, listId: string, order: number, priority?: string, userId?: string): Promise<Card> => {
-  const { data } = await api.post('/cards', { title, listId, order, priority, userId });
+export const createCard = async (
+  title: string,
+  listId: string,
+  order: number,
+  priority?: string,
+  userId?: string,
+  startDate?: string | null,
+  dueDate?: string | null
+): Promise<Card> => {
+  const { data } = await api.post('/cards', {
+    title,
+    listId,
+    order,
+    priority,
+    userId,
+    startDate,
+    dueDate,
+  });
   return data;
 };
 

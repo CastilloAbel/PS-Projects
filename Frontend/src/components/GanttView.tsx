@@ -14,10 +14,11 @@ import {
   Move
 } from 'lucide-react';
 import type { Board, Card, Tag, WorkspaceMember, BoardMember } from '../types';
-import { updateCard, createCard } from '../api';
+import { updateCard, createCard, createList } from '../api';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
+import { usePermission } from '../context/PermissionContext';
 import { CardModal } from './CardModal';
 
 // ==========================================
@@ -69,6 +70,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { currentUserId } = useUser();
+  const { canCreateCard, canEditCard } = usePermission();
 
   // Navigation & Scale State
   const [currentDate, setCurrentDate] = useState<Date>(() => getStartOfDay(new Date()));
@@ -76,6 +78,16 @@ export const GanttView: React.FC<GanttViewProps> = ({
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Quick List Creation States
+  const [showNewListModal, setShowNewListModal] = useState(false);
+  const [newListName, setNewListName] = useState('');
+
+  // Quick Card Creation States
+  const [quickCreateListId, setQuickCreateListId] = useState<string | null>(null);
+  const [newCardTitle, setNewCardTitle] = useState('');
+  const [newCardStartDate, setNewCardStartDate] = useState('');
+  const [newCardDueDate, setNewCardDueDate] = useState('');
 
   // Drag & Resize Mouse Interaction State
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
@@ -226,6 +238,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
   }, [draggedCardId, dragType, dragStartX, dragDeltaDays, columnWidth, allCards, currentUserId, onBoardUpdate]);
 
   const handleDragStart = (e: React.MouseEvent, cardId: string, type: 'MOVE' | 'RESIZE_START' | 'RESIZE_END') => {
+    if (!canEditCard) return;
     e.stopPropagation();
     e.preventDefault();
     setDraggedCardId(cardId);
@@ -265,6 +278,70 @@ export const GanttView: React.FC<GanttViewProps> = ({
     }
   };
 
+  // Quick List Creation Handler
+  const handleCreateList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) return;
+
+    try {
+      setIsUpdating(true);
+      await createList(newListName, board.id, board.lists.length, currentUserId);
+      onBoardUpdate();
+      setShowNewListModal(false);
+      setNewListName('');
+    } catch (err) {
+      console.error('Error creating list:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Quick Card Creation Handlers
+  const handleCellClick = (listId: string, date: Date) => {
+    if (!canCreateCard) return;
+    setQuickCreateListId(listId);
+    const dateStr = date.toISOString().split('T')[0];
+    setNewCardStartDate(dateStr);
+    setNewCardDueDate(dateStr);
+  };
+
+  const handleOpenQuickCreate = (listId: string) => {
+    if (!canCreateCard) return;
+    setQuickCreateListId(listId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    setNewCardStartDate(todayStr);
+    setNewCardDueDate(todayStr);
+  };
+
+  const handleCreateQuickCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCardTitle.trim() || !quickCreateListId) return;
+
+    try {
+      setIsUpdating(true);
+      const list = board.lists.find((l) => l.id === quickCreateListId);
+      const order = list ? list.cards.length : 0;
+
+      await createCard(
+        newCardTitle,
+        quickCreateListId,
+        order,
+        'MEDIUM',
+        currentUserId,
+        newCardStartDate ? new Date(newCardStartDate).toISOString() : null,
+        newCardDueDate ? new Date(newCardDueDate).toISOString() : null
+      );
+
+      onBoardUpdate();
+      setQuickCreateListId(null);
+      setNewCardTitle('');
+    } catch (err) {
+      console.error('Error creating quick card:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // Find today's vertical position
   const todayPosition = useMemo(() => {
     const today = getStartOfDay(new Date());
@@ -297,6 +374,17 @@ export const GanttView: React.FC<GanttViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* New List button */}
+          {canCreateCard && (
+            <button
+              onClick={() => setShowNewListModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-300 dark:border-surface-700 hover:bg-surface-200 dark:hover:bg-surface-800 text-xs font-semibold transition-all"
+            >
+              <Plus className="w-4 h-4 text-primary-500" />
+              <span>Nueva Lista</span>
+            </button>
+          )}
+
           {/* Prev/Today/Next controls */}
           <div className="flex items-center bg-surface-200 dark:bg-surface-800 rounded-lg p-0.5">
             <button
@@ -364,238 +452,278 @@ export const GanttView: React.FC<GanttViewProps> = ({
       {/* Gantt Chart Content Workspace */}
       <div className="flex-1 flex overflow-hidden relative">
         <div className="flex-1 overflow-auto select-none" ref={gridScrollRef}>
-          <div className="min-w-max flex flex-col relative">
+          <div className="min-w-max flex flex-col relative py-4">
             
-            {/* Calendar timeline table layout */}
-            <table className="border-collapse table-fixed w-full relative">
-              {/* Header: Months & Days */}
-              <thead>
-                {/* Months Row */}
-                <tr className={`border-b ${rowBorderClass}`}>
-                  <th className={`w-64 sticky left-0 z-20 ${stickyPanelBg} border-r ${rowBorderClass} p-2 text-left text-xs font-semibold uppercase tracking-wider text-surface-500`}>
-                    Listas / Tareas
-                  </th>
-                  {monthSpans.map((ms, idx) => (
-                    <th
-                      key={idx}
-                      colSpan={ms.span}
-                      className={`p-2 border-r ${rowBorderClass} text-center text-xs font-bold text-primary-400 tracking-wide uppercase bg-surface-900/10 dark:bg-surface-900/20`}
-                      style={{ width: `${ms.span * columnWidth}px` }}
-                    >
-                      {ms.monthName} {ms.year}
+            {board.lists.length === 0 ? (
+              /* Informative Empty State */
+              <div className="flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto my-12 bg-surface-900/40 border border-primary-500/10 rounded-2xl backdrop-blur-sm shadow-xl">
+                <ListTodo className="w-12 h-12 text-primary-500/60 mb-4 animate-pulse" />
+                <h3 className="text-lg font-bold text-surface-250 text-surface-200 mb-2">Este tablero no tiene listas</h3>
+                <p className="text-xs text-surface-400 mb-6 leading-relaxed">
+                  Para poder planificar tareas en el cronograma de Gantt, primero necesitas crear al menos una lista (por ejemplo: "Por hacer", "En progreso").
+                </p>
+                {canCreateCard && (
+                  <button
+                    onClick={() => setShowNewListModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-primary-500/20 hover:scale-[1.02]"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Crear Primera Lista</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* Calendar timeline table layout */
+              <table className="border-collapse table-fixed w-full relative">
+                {/* Header: Months & Days */}
+                <thead>
+                  {/* Months Row */}
+                  <tr className={`border-b ${rowBorderClass}`}>
+                    <th className={`w-64 sticky left-0 z-20 ${stickyPanelBg} border-r ${rowBorderClass} p-2 text-left text-xs font-semibold uppercase tracking-wider text-surface-500`}>
+                      Listas / Tareas
                     </th>
-                  ))}
-                </tr>
-                {/* Days Row */}
-                <tr className={`border-b ${rowBorderClass} bg-surface-100/50 dark:bg-surface-900/30`}>
-                  <th className={`w-64 sticky left-0 z-20 ${stickyPanelBg} border-r ${rowBorderClass}`}></th>
-                  {timelineDays.map((day, idx) => {
-                    const isToday = isSameDay(day, new Date());
-                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                    return (
+                    {monthSpans.map((ms, idx) => (
                       <th
                         key={idx}
-                        className={`p-1 border-r ${rowBorderClass} text-center font-mono text-[11px] leading-tight select-none ${
-                          isToday ? 'bg-primary-500/10 text-primary-400 font-bold' : isWeekend ? 'text-surface-400 dark:text-surface-500' : ''
-                        }`}
-                        style={{ width: `${columnWidth}px` }}
+                        colSpan={ms.span}
+                        className={`p-2 border-r ${rowBorderClass} text-center text-xs font-bold text-primary-400 tracking-wide uppercase bg-surface-900/10 dark:bg-surface-900/20`}
+                        style={{ width: `${ms.span * columnWidth}px` }}
                       >
-                        <div className="text-[9px] uppercase font-sans tracking-tight">
-                          {day.toLocaleDateString('es', { weekday: 'narrow' })}
-                        </div>
-                        <div className={`mt-0.5 w-6 h-6 mx-auto flex items-center justify-center rounded-full ${
-                          isToday ? 'bg-primary-500 text-white font-bold' : ''
-                        }`}>
-                          {day.getDate()}
-                        </div>
+                        {ms.monthName} {ms.year}
                       </th>
-                    );
-                  })}
-                </tr>
-              </thead>
+                    ))}
+                  </tr>
+                  {/* Days Row */}
+                  <tr className={`border-b ${rowBorderClass} bg-surface-100/50 dark:bg-surface-900/30`}>
+                    <th className={`w-64 sticky left-0 z-20 ${stickyPanelBg} border-r ${rowBorderClass}`}></th>
+                    {timelineDays.map((day, idx) => {
+                      const isToday = isSameDay(day, new Date());
+                      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                      return (
+                        <th
+                          key={idx}
+                          className={`p-1 border-r ${rowBorderClass} text-center font-mono text-[11px] leading-tight select-none ${
+                            isToday ? 'bg-primary-500/10 text-primary-400 font-bold' : isWeekend ? 'text-surface-400 dark:text-surface-500' : ''
+                          }`}
+                          style={{ width: `${columnWidth}px` }}
+                        >
+                          <div className="text-[9px] uppercase font-sans tracking-tight">
+                            {day.toLocaleDateString('es', { weekday: 'narrow' })}
+                          </div>
+                          <div className={`mt-0.5 w-6 h-6 mx-auto flex items-center justify-center rounded-full ${
+                            isToday ? 'bg-primary-500 text-white font-bold' : ''
+                          }`}>
+                            {day.getDate()}
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
 
-              {/* Rows: Grouped by Lists */}
-              <tbody className="relative">
-                {board.lists.map((list) => {
-                  const listCards = list.cards.filter((card) => card.startDate || card.dueDate);
-                  return (
-                    <React.Fragment key={list.id}>
-                      {/* List Header Row */}
-                      <tr className={`border-b ${rowBorderClass} bg-surface-100/40 dark:bg-surface-900/50`}>
-                        <td className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 font-extrabold text-sm text-primary-500 uppercase tracking-wide flex items-center gap-2`}>
-                          <span className="w-1.5 h-3.5 bg-primary-500 rounded-sm" />
-                          {list.name}
-                          <span className="text-xs font-normal text-surface-400 lowercase">
-                            ({listCards.length} misión{listCards.length !== 1 ? 'es' : ''})
-                          </span>
-                        </td>
-                        {/* Empty spacing cells for timeline header row */}
-                        {timelineDays.map((_, idx) => (
-                          <td key={idx} className={`border-r ${rowBorderClass} h-10`} />
-                        ))}
-                      </tr>
+                {/* Rows: Grouped by Lists */}
+                <tbody className="relative">
+                  {board.lists.map((list) => {
+                    const listCards = list.cards.filter((card) => card.startDate || card.dueDate);
+                    return (
+                      <React.Fragment key={list.id}>
+                        {/* List Header Row */}
+                        <tr className={`border-b ${rowBorderClass} bg-surface-100/40 dark:bg-surface-900/50`}>
+                          <td className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 font-extrabold text-sm text-primary-500 uppercase tracking-wide flex items-center justify-between gap-2`}>
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="w-1.5 h-3.5 bg-primary-500 rounded-sm" />
+                              <span className="truncate">{list.name}</span>
+                              <span className="text-xs font-normal text-surface-400 lowercase">
+                                ({listCards.length})
+                              </span>
+                            </div>
+                            {canCreateCard && (
+                              <button
+                                onClick={() => handleOpenQuickCreate(list.id)}
+                                className="p-1 hover:bg-surface-200 dark:hover:bg-surface-800 rounded transition-colors text-surface-400 hover:text-primary-500 shrink-0"
+                                title="Crear nueva misión"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                          {/* Empty spacing cells for timeline header row */}
+                          {timelineDays.map((day, idx) => (
+                            <td
+                              key={idx}
+                              onClick={() => handleCellClick(list.id, day)}
+                              className={`border-r ${rowBorderClass} h-10 hover:bg-primary-500/10 cursor-pointer transition-colors`}
+                            />
+                          ))}
+                        </tr>
 
-                      {/* Cards Rows */}
-                      {listCards.length > 0 ? (
-                        listCards.map((card) => {
-                          const { start, due } = getCardDates(card);
-                          let left = 0;
-                          let width = 0;
-                          let isVisible = false;
+                        {/* Cards Rows */}
+                        {listCards.length > 0 ? (
+                          listCards.map((card) => {
+                            const { start, due } = getCardDates(card);
+                            let left = 0;
+                            let width = 0;
+                            let isVisible = false;
 
-                          // Compute visual boundaries
-                          if (start && due) {
-                            let tempStart = new Date(start);
-                            let tempDue = new Date(due);
+                            // Compute visual boundaries
+                            if (start && due) {
+                              let tempStart = new Date(start);
+                              let tempDue = new Date(due);
 
-                            // Apply local drag overrides
-                            if (card.id === draggedCardId) {
-                              if (dragType === 'MOVE') {
-                                tempStart = addDays(tempStart, dragDeltaDays);
-                                tempDue = addDays(tempDue, dragDeltaDays);
-                              } else if (dragType === 'RESIZE_START') {
-                                tempStart = addDays(tempStart, dragDeltaDays);
-                                if (tempStart > tempDue) tempStart = new Date(tempDue);
-                              } else if (dragType === 'RESIZE_END') {
-                                tempDue = addDays(tempDue, dragDeltaDays);
-                                if (tempDue < tempStart) tempDue = new Date(tempStart);
+                              // Apply local drag overrides
+                              if (card.id === draggedCardId) {
+                                if (dragType === 'MOVE') {
+                                  tempStart = addDays(tempStart, dragDeltaDays);
+                                  tempDue = addDays(tempDue, dragDeltaDays);
+                                } else if (dragType === 'RESIZE_START') {
+                                  tempStart = addDays(tempStart, dragDeltaDays);
+                                  if (tempStart > tempDue) tempStart = new Date(tempDue);
+                                } else if (dragType === 'RESIZE_END') {
+                                  tempDue = addDays(tempDue, dragDeltaDays);
+                                  if (tempDue < tempStart) tempDue = new Date(tempStart);
+                                }
                               }
+
+                              const startOffset = differenceInDays(tempStart, timelineStart);
+                              const duration = differenceInDays(tempDue, tempStart) + 1;
+
+                              left = startOffset * columnWidth;
+                              width = Math.max(1, duration) * columnWidth;
+
+                              // Visible range check (with 1 day tolerance)
+                              isVisible = (startOffset + duration > 0) && (startOffset < daysCount);
                             }
 
-                            const startOffset = differenceInDays(tempStart, timelineStart);
-                            const duration = differenceInDays(tempDue, tempStart) + 1;
-
-                            left = startOffset * columnWidth;
-                            width = Math.max(1, duration) * columnWidth;
-
-                            // Visible range check (with 1 day tolerance)
-                            isVisible = (startOffset + duration > 0) && (startOffset < daysCount);
-                          }
-
-                          return (
-                            <tr
-                              key={card.id}
-                              className={`border-b ${rowBorderClass} group hover:bg-surface-100/30 dark:hover:bg-surface-800/10 transition-colors`}
-                            >
-                              {/* Sticky task header */}
-                              <td
-                                onClick={() => setEditingCard(card)}
-                                className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 text-xs font-semibold hover:text-primary-500 cursor-pointer truncate max-w-xs shadow-[2px_0_5px_rgba(0,0,0,0.02)]`}
-                                title={card.title}
+                            return (
+                              <tr
+                                key={card.id}
+                                className={`border-b ${rowBorderClass} group hover:bg-surface-100/30 dark:hover:bg-surface-800/10 transition-colors`}
                               >
-                                <div className="flex flex-col gap-1">
-                                  <span className="truncate">{card.title}</span>
-                                  {card.assignee && (
-                                    <span className="text-[10px] text-surface-400 font-normal">
-                                      👤 {card.assignee.name}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* Timeline cells & card horizontal plot bar */}
-                              <td
-                                colSpan={daysCount}
-                                className="p-0 relative h-14 overflow-visible"
-                              >
-                                {/* Alternating vertical grid cell lines */}
-                                <div className="absolute inset-0 flex">
-                                  {timelineDays.map((day, idx) => {
-                                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                                    return (
-                                      <div
-                                        key={idx}
-                                        className={`border-r ${rowBorderClass} h-full select-none pointer-events-none ${
-                                          isWeekend ? cellBgAlt : ''
-                                        }`}
-                                        style={{ width: `${columnWidth}px` }}
-                                      />
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Today Red vertical line marker */}
-                                {todayPosition !== null && (
-                                  <div
-                                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
-                                    style={{ left: `${todayPosition}px` }}
-                                  >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 absolute -top-1" />
-                                  </div>
-                                )}
-
-                                {/* Plotted Card Bar */}
-                                {isVisible && (
-                                  <div
-                                    style={{
-                                      left: `${left}px`,
-                                      width: `${width}px`,
-                                    }}
-                                    className={`absolute top-2.5 h-9 rounded-lg border shadow-sm flex items-center justify-between px-2 bg-gradient-to-r hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
-                                      card.isCompleted
-                                        ? 'from-green-500/20 to-green-600/10 border-green-500/30 text-green-400'
-                                        : theme === 'dark'
-                                        ? 'from-primary-950/40 to-primary-900/30 border-primary-500/30 text-surface-100'
-                                        : 'from-primary-50 to-primary-100/50 border-primary-300 text-surface-800'
-                                    }`}
-                                    onMouseDown={(e) => handleDragStart(e, card.id, 'MOVE')}
-                                    onClick={() => setEditingCard(card)}
-                                  >
-                                    {/* Left resize handle */}
-                                    <div
-                                      className="absolute left-0 top-0 bottom-0 w-2 hover:bg-primary-500/40 rounded-l-lg cursor-w-resize z-10"
-                                      onMouseDown={(e) => handleDragStart(e, card.id, 'RESIZE_START')}
-                                    />
-
-                                    {/* Inner details container */}
-                                    <div className="flex items-center gap-1.5 overflow-hidden w-full h-full select-none pointer-events-none">
-                                      <Move className="w-3 h-3 text-surface-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                      {card.isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
-                                      <span className="text-[11px] font-bold truncate select-none leading-none">
-                                        {card.title}
+                                {/* Sticky task header */}
+                                <td
+                                  onClick={() => setEditingCard(card)}
+                                  className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 text-xs font-semibold hover:text-primary-500 cursor-pointer truncate max-w-xs shadow-[2px_0_5px_rgba(0,0,0,0.02)]`}
+                                  title={card.title}
+                                >
+                                  <div className="flex flex-col gap-1">
+                                    <span className="truncate">{card.title}</span>
+                                    {card.assignee && (
+                                      <span className="text-[10px] text-surface-400 font-normal">
+                                        👤 {card.assignee.name}
                                       </span>
-                                    </div>
-
-                                    {/* Right resize handle */}
-                                    <div
-                                      className="absolute right-0 top-0 bottom-0 w-2 hover:bg-primary-500/40 rounded-r-lg cursor-e-resize z-10"
-                                      onMouseDown={(e) => handleDragStart(e, card.id, 'RESIZE_END')}
-                                    />
+                                    )}
                                   </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        // No cards scheduled row
-                        <tr className={`border-b ${rowBorderClass}`}>
-                          <td className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 text-xs italic text-surface-400`}>
-                            Sin misiones programadas
-                          </td>
-                          <td colSpan={daysCount} className="p-0 relative h-10">
-                            <div className="absolute inset-0 flex">
-                              {timelineDays.map((day, idx) => {
-                                const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                                return (
-                                  <div
-                                    key={idx}
-                                    className={`border-r ${rowBorderClass} h-full select-none pointer-events-none ${
-                                      isWeekend ? cellBgAlt : ''
-                                    }`}
-                                    style={{ width: `${columnWidth}px` }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                                </td>
+
+                                {/* Timeline cells & card horizontal plot bar */}
+                                <td
+                                  colSpan={daysCount}
+                                  className="p-0 relative h-14 overflow-visible"
+                                >
+                                  {/* Alternating vertical grid cell lines */}
+                                  <div className="absolute inset-0 flex">
+                                    {timelineDays.map((day, idx) => {
+                                      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className={`border-r ${rowBorderClass} h-full select-none pointer-events-none ${
+                                            isWeekend ? cellBgAlt : ''
+                                          }`}
+                                          style={{ width: `${columnWidth}px` }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Today Red vertical line marker */}
+                                  {todayPosition !== null && (
+                                    <div
+                                      className="absolute top-0 bottom-0.5 w-0.5 bg-red-500 z-10 pointer-events-none"
+                                      style={{ left: `${todayPosition}px` }}
+                                    >
+                                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 absolute -top-1" />
+                                    </div>
+                                  )}
+
+                                  {/* Plotted Card Bar */}
+                                  {isVisible && (
+                                    <div
+                                      style={{
+                                        left: `${left}px`,
+                                        width: `${width}px`,
+                                      }}
+                                      className={`absolute top-2.5 h-9 rounded-lg border shadow-sm flex items-center justify-between px-2 bg-gradient-to-r hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
+                                        card.isCompleted
+                                          ? 'from-green-500/20 to-green-600/10 border-green-500/30 text-green-400'
+                                          : theme === 'dark'
+                                          ? 'from-primary-950/40 to-primary-900/30 border-primary-500/30 text-surface-100'
+                                          : 'from-primary-50 to-primary-100/50 border-primary-300 text-surface-800'
+                                      } ${!canEditCard ? 'opacity-90 cursor-not-allowed' : ''}`}
+                                      onMouseDown={(e) => handleDragStart(e, card.id, 'MOVE')}
+                                      onClick={() => setEditingCard(card)}
+                                    >
+                                      {/* Left resize handle */}
+                                      {canEditCard && (
+                                        <div
+                                          className="absolute left-0 top-0 bottom-0 w-2 hover:bg-primary-500/40 rounded-l-lg cursor-w-resize z-10"
+                                          onMouseDown={(e) => handleDragStart(e, card.id, 'RESIZE_START')}
+                                        />
+                                      )}
+
+                                      {/* Inner details container */}
+                                      <div className="flex items-center gap-1.5 overflow-hidden w-full h-full select-none pointer-events-none">
+                                        {canEditCard && <Move className="w-3 h-3 text-surface-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                                        {card.isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                                        <span className="text-[11px] font-bold truncate select-none leading-none">
+                                          {card.title}
+                                        </span>
+                                      </div>
+
+                                      {/* Right resize handle */}
+                                      {canEditCard && (
+                                        <div
+                                          className="absolute right-0 top-0 bottom-0 w-2 hover:bg-primary-500/40 rounded-r-lg cursor-e-resize z-10"
+                                          onMouseDown={(e) => handleDragStart(e, card.id, 'RESIZE_END')}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          // No cards scheduled row
+                          <tr className={`border-b ${rowBorderClass}`}>
+                            <td className={`w-64 sticky left-0 z-10 ${stickyPanelBg} border-r ${rowBorderClass} p-3 text-xs italic text-surface-400`}>
+                              Sin misiones programadas
+                            </td>
+                            <td colSpan={daysCount} className="p-0 relative h-10">
+                              <div className="absolute inset-0 flex">
+                                {timelineDays.map((day, idx) => {
+                                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                                  return (
+                                    <div
+                                      key={idx}
+                                      onClick={() => handleCellClick(list.id, day)}
+                                      className={`border-r ${rowBorderClass} h-full select-none hover:bg-primary-500/10 cursor-pointer transition-colors ${
+                                        isWeekend ? cellBgAlt : ''
+                                      }`}
+                                      style={{ width: `${columnWidth}px` }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -640,13 +768,15 @@ export const GanttView: React.FC<GanttViewProps> = ({
                       >
                         Abrir detalles
                       </button>
-                      <button
-                        onClick={() => handleQuickScheduleToday(card.id)}
-                        className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-white bg-primary-500 hover:bg-primary-600 rounded-md transition-colors shadow-sm"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Programar Hoy
-                      </button>
+                      {canEditCard && (
+                        <button
+                          onClick={() => handleQuickScheduleToday(card.id)}
+                          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-white bg-primary-500 hover:bg-primary-600 rounded-md transition-colors shadow-sm"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Programar Hoy
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -669,6 +799,102 @@ export const GanttView: React.FC<GanttViewProps> = ({
           onClose={() => setEditingCard(null)}
           onSave={handleUpdateCard}
         />
+      )}
+
+      {/* Quick Create Card Modal Form */}
+      {quickCreateListId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setQuickCreateListId(null)}>
+          <div className={`rounded-lg shadow-lg p-6 w-full max-w-md border ${theme === 'dark' ? 'bg-surface-900 border-surface-700 text-surface-50' : 'bg-white border-surface-200 text-surface-900'}`} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Nueva Misión</h3>
+            <form onSubmit={handleCreateQuickCard} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">Título</label>
+                <input
+                  type="text"
+                  required
+                  value={newCardTitle}
+                  onChange={e => setNewCardTitle(e.target.value)}
+                  placeholder="Ej: Izar las velas"
+                  className={`w-full px-4 py-2 rounded-lg border outline-none ${theme === 'dark' ? 'bg-surface-800 border-surface-700 text-surface-50 focus:border-primary-500' : 'bg-surface-50 border-surface-200 text-surface-900 focus:border-primary-500'}`}
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">Inicio</label>
+                  <input
+                    type="date"
+                    value={newCardStartDate}
+                    onChange={e => setNewCardStartDate(e.target.value)}
+                    className={`w-full px-3 py-1.5 rounded-lg border outline-none ${theme === 'dark' ? 'bg-surface-800 border-surface-700 text-surface-50 focus:border-primary-500' : 'bg-surface-50 border-surface-200 text-surface-900 focus:border-primary-500'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">Vencimiento</label>
+                  <input
+                    type="date"
+                    value={newCardDueDate}
+                    onChange={e => setNewCardDueDate(e.target.value)}
+                    className={`w-full px-3 py-1.5 rounded-lg border outline-none ${theme === 'dark' ? 'bg-surface-800 border-surface-700 text-surface-50 focus:border-primary-500' : 'bg-surface-50 border-surface-200 text-surface-900 focus:border-primary-500'}`}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickCreateListId(null)}
+                  className="flex-1 px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
+                >
+                  Crear
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New List Modal Form */}
+      {showNewListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowNewListModal(false)}>
+          <div className={`rounded-lg shadow-lg p-6 w-full max-w-md border ${theme === 'dark' ? 'bg-surface-900 border-surface-700 text-surface-50' : 'bg-white border-surface-200 text-surface-900'}`} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Nueva Lista</h3>
+            <form onSubmit={handleCreateList} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-1">Nombre de la Lista</label>
+                <input
+                  type="text"
+                  required
+                  value={newListName}
+                  onChange={e => setNewListName(e.target.value)}
+                  placeholder="Ej: Por Hacer"
+                  className={`w-full px-4 py-2 rounded-lg border outline-none ${theme === 'dark' ? 'bg-surface-800 border-surface-700 text-surface-50 focus:border-primary-500' : 'bg-surface-50 border-surface-200 text-surface-900 focus:border-primary-500'}`}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewListModal(false)}
+                  className="flex-1 px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
+                >
+                  Crear Lista
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
